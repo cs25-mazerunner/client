@@ -28,6 +28,12 @@ response =requests.get('https://lambda-treasure-hunt.herokuapp.com/api/adv/init/
 # exits=response.exits
 # cooldown=response.cooldown
 
+#pull our values
+# curr_map=response.map
+# curr_roominfo=response.roominfo
+# curr_team_locations=response.teamlocations
+
+
 print(secret_key,response.json())
 #Start walk loop
 # while True:
