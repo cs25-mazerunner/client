@@ -22,21 +22,26 @@ reverse_dirs = {"n": "s", "s": "n", "e": "w", "w": "e", 'x': 'x'}
 # requests.header['Authorization']='Token {secret_key}'
 
 response =requests.get('https://lambda-treasure-hunt.herokuapp.com/api/adv/init/', headers={'Authorization':f'Token {secret_key}'} )
-#pull relevant values
-# curr_room=response.room_id
-# curr_coordinates=response.coordinates
-# exits=response.exits
-# cooldown=response.cooldown
+# pull LS values
+r=response.json()
+curr_room=r['room_id']
+curr_coordinates=r['coordinates']
+exits=r['exits']
+cooldown=r['cooldown']
 
-#pull our values
+# pull OS values
 # curr_map=response.map
 # curr_roominfo=response.roominfo
 # curr_team_locations=response.teamlocations
 
-
-print(secret_key,response.json())
+print(curr_room,curr_coordinates,exits,cooldown)
 #Start walk loop
+
 # while True:
+    # starttime=time.time()
+    # while True:
+    #   print "tick"
+    #   time.sleep(60.0 - ((time.time() - starttime) % 60.0))
 #         # Get exits
 #     next_directions=player.current_room.get_exits()
 #     if reverse_dirs[last_direction] in next_directions:
