@@ -43,12 +43,12 @@ print(curr_room,curr_coordinates,exits,cooldown)
 
 #Start walk loop
 # while True:
-derta=[{"direction":"w"}]
-for trials in range(len(derta)):
+directions_list=[{"direction":"n"},{"direction":"s"}]
+for trials in range(len(directions_list)):
     time.sleep(cooldown - ((time.time() - starttime) % cooldown))
     # print(f"Wake {time.time()-starttime}")
     current_action='move/'
-    current_data=derta[trials]  
+    current_data=directions_list[trials]  
     # response=requests.post(SERVER+current_move, headers=SET_HEADERS, data=current_data)
     try:
         response=requests.post(SERVER+current_action, headers=SET_HEADERS, json=current_data)
