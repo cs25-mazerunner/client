@@ -5,6 +5,7 @@ import os
 from requests.exceptions import HTTPError
 import json
 import sys
+from util import Stack, Queue
 
 load_dotenv()
 secret_key=os.getenv("JASON_KEY")
@@ -17,7 +18,7 @@ SERVER=LAMBDA_SERVER
 #Current map supplied by server
 player={}
 world_map={}
-important_places={'store':1,'well':55}
+important_places={'store':1,'well':55,'fly':22}
 # for x in range(500):
 #     map[x]={"n": "?", "s": "?", "e": "?", "w": "?"}
 #get current Map
@@ -67,6 +68,41 @@ def update_map():
         }   
     return world_map
 
+def find_direction():
+    q=Queue()
+    q.enqueue((world_map[curr_room],[]))
+    while q.size()>0:
+        rm=q.dequeue()
+        # print("ROOM",rm)
+        for d in rm[0].items():
+            if d[1]=='?':
+                # print("APPEND",rm[1],d[0])
+                new_path=list(rm[1])
+                new_path.append(d[0])
+                return new_path
+            elif d[1] !='x':
+                new_path=list(rm[1])
+                new_path.append(d[0])
+                q.enqueue((world_map[d[1]],new_path ))
+
+def find_room(target):
+    q=Queue()    
+    # q.enqueue((world_map[curr_room],[]))
+    # while q.size()>0:
+    #     rm=q.dequeue()
+    #     # print("ROOM",rm)
+    
+    #     for d in rm[0].items():
+    #         if d[1]=='?':
+    #             # print("APPEND",rm[1],d[0])
+    #             new_path=list(rm[1])
+    #             new_path.append(d[0])
+    #             return new_path
+    #         elif d[1] !='x':
+    #             new_path=list(rm[1])
+    #             new_path.append(d[0])
+    #             q.enqueue((world_map[d[1]],new_path ))
+
 #init character
 response =requests.get(SERVER+'init/', headers=SET_HEADERS )
 starttime=time.time()
@@ -101,6 +137,7 @@ print(curr_room,curr_coordinates,exits,cooldown)
 #,{"direction":"n"},{"direction":"w"},{"direction":"e"},{"direction":"s"}
 # current_data=directions_list[0]
 # for trials in range(len(directions_list)):
+cmds=[]
 while True:
     if current_action!=None:
         time.sleep(cooldown - ((time.time() - starttime) % cooldown))
@@ -112,24 +149,40 @@ while True:
     # current_data=directions_list[trials]  
 
     # Action IMPUT
-    if current_action not in ['auto_get','auto_sell','auto_confirm']:
-        cmds = input("-> ").lower().split(" ")
-        if cmds[0] in ["n", "s", "e", "w"]:
+    if current_action not in ['auto_get','auto_sell','auto_confirm','auto_walk','auto_status']:
+        if player['encumbrance']>player['strength']*.75:
+            cmds=find_room(1)
+        if len(cmds)==0:
+            cmds = input("-> ").lower().split(",")
+        curr_cmd = cmds.pop(0).split(" ")
+        if curr_cmd[0] in ["n", "s", "e", "w"]:
             current_action='move/'
-            current_data={"direction":cmds[0]}
-        elif cmds[0] == "q":
+            current_data={"direction":curr_cmd[0]}
+        elif curr_cmd[0] == "q":
             break
-        elif cmds[0] == "g":
+        elif curr_cmd[0] == "g":
             current_action='take/'
             current_data={"name":r['items'][0]}
-        elif cmds[0] == "i":
+        elif curr_cmd[0] == "i":
             current_action='status/'
             current_data={}
-        elif cmds[0] in ["o"]:
+        elif curr_cmd[0] in ["o"]:
             current_action='sell/'
             current_data={"name":player['inventory'][0]}
-            if cmds[0]=="y":
+            if curr_cmd[0]=="y":
                 current_data['confirm']='yes'
+        elif curr_cmd[0] in ["a"]:
+            print("AUTOWALK")
+            current_action='move/'
+            cmds=find_direction()
+            cmds.append('a')
+            # print("DIRS!",dir)
+            # sys.exit()
+            new_dir=cmds.pop(0)
+            current_data={"direction":new_dir}
+        elif curr_cmd[0] in ["p"]:
+            current_action='pray/'
+            current_data={}
         else:
             print("I did not understand that command.")
             current_action=None
@@ -185,6 +238,8 @@ while True:
         if len(items)>0:
             print("GET IT!")
             current_action ='auto_get'
+        else:
+            cmds.insert(0,'i')
         if curr_room==1:
             current_action='auto_sell'
     elif current_action=='take/':
@@ -201,7 +256,7 @@ while True:
         cooldown=r['cooldown']
         player['inventory'].append(current_data['name'])
         print("Items:",r['items'],"\nMSG:",r['messages'])
-        if len(items)>0:
+        if len(r['items'])>0:
             print("GET IT!")
             current_action ='auto_get'
     elif current_action=='status/':
@@ -261,6 +316,19 @@ while True:
             if len(player['inventory'])>0:
                 current_action='auto_sell'
     # elif current_action==:
+    elif current_action=='pray/':
+        try:
+            print("TRYING",current_action,current_data)
+            response=requests.post(SERVER+current_action, headers=SET_HEADERS, json=current_data)
+            response.raise_for_status()
+        except HTTPError as http_err:
+            print(f'HTTP error occurred: {http_err}')
+        except Exception as err:
+            print(f'Other error occurred: {err}')
+        starttime=time.time()
+        r=response.json()
+        cooldown=r['cooldown']
+        print(r['messages'],'\n',r['errors'])
     else:
         print(f"Didn't Move: {current_action}")
 # print("world_map",world_map[0],world_map[1])
