@@ -81,11 +81,18 @@ def find_direction():
                 new_path=list(rm[1])
                 new_path.append(d[0])
                 return new_path
-            elif d[1] !='x' and d[0]!=reverse_dirs[rm[1][-1]] and d[1] not in found:
-                new_path=list(rm[1])
-                new_path.append(d[0])
-                q.enqueue((world_map[d[1]],new_path ))
-                found.append(d[1])
+            elif d[1] !='x' and d[1] not in found:
+                if len(rm[1])>0 and d[0]!=reverse_dirs[rm[1][-1]]:
+                    new_path=list(rm[1])
+                    new_path.append(d[0])
+                    q.enqueue((world_map[d[1]],new_path ))
+                    found.append(d[1])
+                else:
+                    new_path=list(rm[1])
+                    new_path.append(d[0])
+                    q.enqueue((world_map[d[1]],new_path ))
+                    found.append(d[1])
+
 
 def find_room(target):
     found=[]
