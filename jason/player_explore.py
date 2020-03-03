@@ -19,6 +19,7 @@ player={}
 world_map={}
 # for x in range(500):
 #     map[x]={"n": "?", "s": "?", "e": "?", "w": "?"}
+#get current Map
 with open("../map.txt",'r') as file:
     map_data=file.read()
     json_map = json.loads(map_data)
@@ -26,6 +27,15 @@ for item in json_map.keys():
     payload=json_map[item]
     item=int(item)
     world_map[item]=payload
+#get current Room Descriptions
+rooms={}
+with open("../room.txt",'r') as file:
+    desc_data=file.read()
+    json_map = json.loads(desc_data)
+for item in json_map.keys():
+    payload=json_map[item]
+    item=int(item)
+    rooms[item]=payload
 # print(world_map)
 # sys.exit()
 # Create oposites list
@@ -63,7 +73,17 @@ def update_map():
         walls = {'n', 's', 'w', 'e'}-set(exits)
         # print("WALLS",walls)
         for x in walls:
-            world_map[curr_room][x] = 'x'        
+            world_map[curr_room][x] = 'x'
+        rooms[curr_room]={'room_id':curr_room,
+        "title": r['title'],
+        "description": r['description'],
+        "coordinates": r['coordinates'],
+        "elevation": r['elevation'],
+        "terrain": r['terrain'],
+        "items": r['items'],
+        "exits": r['exits'],
+        "messages": r['messages'],
+        }   
     return world_map
 
 #Start walk loop
@@ -83,27 +103,30 @@ while True:
     # current_data=directions_list[trials]  
 
     # Action IMPUT
-    cmds = input("-> ").lower().split(" ")
-    if cmds[0] in ["n", "s", "e", "w"]:
-        current_action='move/'
-        current_data={"direction":cmds[0]}
-    elif cmds[0] == "q":
-        break
-    elif cmds[0] == "g":
-        current_action='take/'
-        current_data={"name":r['items'][0]}
-    elif cmds[0] == "i":
-        current_action='status/'
-        current_data={}
-    elif cmds[0] in ["o","y"]:
-        current_action='sell/'
-        current_data={"name":player['inventory'][0]}
-        if cmds[0]=="y":
-            current_data['confirm']='yes'
+    if current_action !='auto_get':
+        cmds = input("-> ").lower().split(" ")
+        if cmds[0] in ["n", "s", "e", "w"]:
+            current_action='move/'
+            current_data={"direction":cmds[0]}
+        elif cmds[0] == "q":
+            break
+        elif cmds[0] == "g":
+            current_action='take/'
+            current_data={"name":r['items'][0]}
+        elif cmds[0] == "i":
+            current_action='status/'
+            current_data={}
+        elif cmds[0] in ["o","y"]:
+            current_action='sell/'
+            current_data={"name":player['inventory'][0]}
+            if cmds[0]=="y":
+                current_data['confirm']='yes'
+        else:
+            print("I did not understand that command.")
+            current_action=None
     else:
-        print("I did not understand that command.")
-        current_action=None
-
+            current_action='take/'
+            current_data={"name":r['items'][0]}
     # response=requests.post(SERVER+current_move, headers=SET_HEADERS, data=current_data)
     #Next Action
     if current_action=='move/':
@@ -113,7 +136,7 @@ while True:
             current_data["next_room_id"]=str(world_map[curr_room][current_data['direction']])
         # Move 
         try:
-            print("TRYING",current_action,current_data)
+            # print("TRYING",current_action,current_data)
             response=requests.post(SERVER+current_action, headers=SET_HEADERS, json=current_data)
             response.raise_for_status()
         except HTTPError as http_err:
@@ -130,14 +153,22 @@ while True:
         curr_coordinates=r['coordinates']
         exits=r['exits']
         cooldown=r['cooldown']
+        items=r['items']
         print("ROOM",curr_room,curr_coordinates,"EXIT",exits,"COOL",cooldown)
         print("TITLE",r['title'],"\nDESC",r['description'],"\nItems:",r['items'],"\nERR:",r['errors'],"\nMSG:",r['messages'],'\n\n')
         update_map()#map,curr_room,last_room,current_data,last_data
         with open("../map.txt",'w') as file:
             file.write(json.dumps(world_map))
+        with open("../room.txt",'w') as file:
+            file.write(json.dumps(rooms))
+        #Get items automatically if they are in the room.
+        if len(items)>0:
+            print("GET IT!")
+            current_action ='auto_get'
+
     elif current_action=='take/':
         try:
-            print("TRYING",current_action,current_data)
+            # print("TRYING",current_action,current_data)
             response=requests.post(SERVER+current_action, headers=SET_HEADERS, json=current_data)
             response.raise_for_status()
         except HTTPError as http_err:
@@ -148,9 +179,12 @@ while True:
         r=response.json()
         cooldown=r['cooldown']
         print("Items:",r['items'],"\nMSG:",r['messages'])
+        if len(items)>0:
+            print("GET IT!")
+            current_action ='auto_get'
     elif current_action=='status/':
         try:
-            print("TRYING",current_action,current_data)
+            # print("TRYING",current_action,current_data)
             response=requests.post(SERVER+current_action, headers=SET_HEADERS, json=current_data)
             response.raise_for_status()
         except HTTPError as http_err:
@@ -186,7 +220,7 @@ while True:
         )                  
     elif current_action=='sell/':
         try:
-            print("TRYING",current_action,current_data)
+            # print("TRYING",current_action,current_data)
             response=requests.post(SERVER+current_action, headers=SET_HEADERS, json=current_data)
             response.raise_for_status()
         except HTTPError as http_err:
