@@ -22,7 +22,7 @@ important_places={'store':1,'well':55,'fly':22}
 # for x in range(500):
 #     map[x]={"n": "?", "s": "?", "e": "?", "w": "?"}
 #get current Map
-with open("../map.txt",'r') as file:
+with open("map.txt",'r') as file:
     map_data=file.read()
     json_map = json.loads(map_data)
 for item in json_map.keys():
@@ -31,7 +31,7 @@ for item in json_map.keys():
     world_map[item]=payload
 #get current Room Descriptions
 rooms={}
-with open("../room.txt",'r') as file:
+with open("room.txt",'r') as file:
     desc_data=file.read()
     json_map = json.loads(desc_data)
 for item in json_map.keys():
@@ -81,11 +81,18 @@ def find_direction():
                 new_path=list(rm[1])
                 new_path.append(d[0])
                 return new_path
-            elif d[1] !='x' and d[0]!=reverse_dirs[rm[1][-1]] and d[1] not in found:
-                new_path=list(rm[1])
-                new_path.append(d[0])
-                q.enqueue((world_map[d[1]],new_path ))
-                found.append(d[1])
+            elif d[1] !='x' and d[1] not in found:
+                if len(rm[1])>0 and d[0]!=reverse_dirs[rm[1][-1]]:
+                    new_path=list(rm[1])
+                    new_path.append(d[0])
+                    q.enqueue((world_map[d[1]],new_path ))
+                    found.append(d[1])
+                else:
+                    new_path=list(rm[1])
+                    new_path.append(d[0])
+                    q.enqueue((world_map[d[1]],new_path ))
+                    found.append(d[1])
+
 
 def find_room(target):
     found=[]
@@ -249,9 +256,9 @@ while True:
         print("ROOM",curr_room,curr_coordinates,"EXIT",exits,"COOL",cooldown)
         print("TITLE",r['title'],"\nDESC",r['description'],"\nItems:",r['items'],"\nERR:",r['errors'],"\nMSG:",r['messages'],'\n\n')
         update_map()#map,curr_room,last_room,current_data,last_data
-        with open("../map.txt",'w') as file:
+        with open("map.txt",'w') as file:
             file.write(json.dumps(world_map))
-        with open("../room.txt",'w') as file:
+        with open("room.txt",'w') as file:
             file.write(json.dumps(rooms))
         #Get items automatically if they are in the room.
         if len(items)>0:
