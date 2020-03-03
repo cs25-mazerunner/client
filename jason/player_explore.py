@@ -3,6 +3,8 @@ import time
 from dotenv import load_dotenv
 import os
 from requests.exceptions import HTTPError
+import json
+import sys
 
 load_dotenv()
 secret_key=os.getenv("JASON_KEY")
@@ -13,16 +15,22 @@ OS_SERVER=''
 SERVER=LAMBDA_SERVER
 
 #Current map supplied by server
-map = {}
+map={}
+# for x in range(500):
+#     map[x]={"n": "?", "s": "?", "e": "?", "w": "?"}
+with open("../map.txt",'r') as file:
+    map_data=file.read()
+    json_map = json.loads(map_data)
+for item in json_map.keys():
+    payload=json_map[item]
+    item=int(item)
+    map[item]=payload
+# print(map)
+# sys.exit()
 # Create oposites list
 reverse_dirs = {"n": "s", "s": "n", "e": "w", "w": "e", 'x': 'x'}
 
-# #Cooldown
-
-
-
 #init character
-# requests.header['Authorization']='Token {secret_key}'
 
 response =requests.get(SERVER+'init/', headers=SET_HEADERS )
 starttime=time.time()
@@ -33,7 +41,7 @@ curr_coordinates=r['coordinates']
 exits=r['exits']
 cooldown=r['cooldown']
 print("ROOM",curr_room,curr_coordinates,"EXIT",exits,"COOL",cooldown)
-print("TITLE",r['title'],"\nDESC",r['description'],"\nERR:",r['errors'],"\nMSG:",r['messages'],'\n\n')
+print("TITLE",r['title'],"\nDESC",r['description'],"\nItems:",r['items'],"\nERR:",r['errors'],"\nMSG:",r['messages'],'\n\n')
 # pull OS values
 # curr_map=response.map
 # curr_roominfo=response.roominfo
@@ -41,33 +49,81 @@ print("TITLE",r['title'],"\nDESC",r['description'],"\nERR:",r['errors'],"\nMSG:"
 
 print(curr_room,curr_coordinates,exits,cooldown)
 
+def update_map():
+    if last_data['direction']!=None:
+        # print("WTTF",last_room,map[last_room][reverse_dirs[last_data['direction']]],curr_room)
+        map[last_room][last_data['direction']]=curr_room
+        # print("WTTF2",curr_room,map[curr_room][reverse_dirs[current_data['direction']]],last_room)
+        map[curr_room][reverse_dirs[current_data['direction']]]=last_room
+        print(map[curr_room], map[last_room])
+
+        #check for current walls
+        walls = {'n', 's', 'w', 'e'}-set(exits)
+        # print("WALLS",walls)
+        for x in walls:
+            map[curr_room][x] = 'x'        
+    return map
+
 #Start walk loop
 # while True:
-directions_list=[{"direction":"n"},{"direction":"s"}]
-for trials in range(len(directions_list)):
+directions_list=[{"direction":"w"},{"direction":"e"},{"direction":"e"},{"direction":"w"}] #,{"direction":"e"},{"direction":"w"}
+#,{"direction":"n"},{"direction":"w"},{"direction":"e"},{"direction":"s"}
+current_data=directions_list[0]
+# for trials in range(len(directions_list)):
+while True:
     time.sleep(cooldown - ((time.time() - starttime) % cooldown))
     # print(f"Wake {time.time()-starttime}")
+
+    #Choose next action
     current_action='move/'
-    current_data=directions_list[trials]  
+
+    #Choose next action data
+    # current_data=directions_list[trials]  
+    #######
+    # UNCOMMENT TO WALK AROUND
+    #######
+    cmds = input("-> ").lower().split(" ")
+    if cmds[0] in ["n", "s", "e", "w"]:
+        current_data={"direction":cmds[0]}
+    elif cmds[0] == "q":
+        break
+    else:
+        print("I did not understand that command.")
+
     # response=requests.post(SERVER+current_move, headers=SET_HEADERS, data=current_data)
-    try:
-        response=requests.post(SERVER+current_action, headers=SET_HEADERS, json=current_data)
-        print(response.status_code)
-        response.raise_for_status()
-    except HTTPError as http_err:
-        print(f'HTTP error occurred: {http_err}')
-    except Exception as err:
-        print(f'Other error occurred: {err}')
+    #Next Action
+    if current_action=='move/':
+        # Wise Explorer
+        # print("WTF",current_data['direction'],map[curr_room][current_data['direction']])
+        if current_data['direction']!=None and map[curr_room][current_data['direction']] !='?':
+            current_data["next_room_id"]=str(map[curr_room][current_data['direction']])
+        # Move 
+        try:
+            print("TRYING",current_action,current_data)
+            response=requests.post(SERVER+current_action, headers=SET_HEADERS, json=current_data)
+            response.raise_for_status()
+        except HTTPError as http_err:
+            print(f'HTTP error occurred: {http_err}')
+        except Exception as err:
+            print(f'Other error occurred: {err}')
 
-    starttime=time.time()
-    r=response.json()
-    curr_room=r['room_id']
-    curr_coordinates=r['coordinates']
-    exits=r['exits']
-    cooldown=r['cooldown']
-    print("ROOM",curr_room,curr_coordinates,"EXIT",exits,"COOL",cooldown)
-    print("TITLE",r['title'],"\nDESC",r['description'],"\nERR:",r['errors'],"\nMSG:",r['messages'],'\n\n')
-
+        starttime=time.time()
+        last_room=curr_room
+        last_action=current_action
+        last_data=current_data
+        r=response.json()
+        curr_room=r['room_id']
+        curr_coordinates=r['coordinates']
+        exits=r['exits']
+        cooldown=r['cooldown']
+        print("ROOM",curr_room,curr_coordinates,"EXIT",exits,"COOL",cooldown)
+        print("TITLE",r['title'],"\nDESC",r['description'],"\nItems:",r['items'],"\nERR:",r['errors'],"\nMSG:",r['messages'],'\n\n')
+        update_map()#map,curr_room,last_room,current_data,last_data
+        with open("../map.txt",'w') as file:
+            file.write(json.dumps(map))
+    else:
+        print("Didn't Move")
+# print("MAP",map[0],map[1])
 #         # Check exits
 #     if reverse_dirs[last_direction] in next_directions:
 #         next_directions.remove(reverse_dirs[last_direction])
