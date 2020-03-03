@@ -25,3 +25,4 @@ for x in rooms:
     if rooms[x]['title'] not in ['A misty room','A Dark Cave','Mt. Holloway']:
         print(f"{x} {rooms[x]['title']} - {rooms[x]['description']}")
 print("COUNT",count)
+
