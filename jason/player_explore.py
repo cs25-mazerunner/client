@@ -56,14 +56,21 @@ def update_map():
         # print("WTTF2",curr_room,map[curr_room][reverse_dirs[current_data['direction']]],last_room)
         map[curr_room][reverse_dirs[current_data['direction']]]=last_room
         print(map[curr_room], map[last_room])
+
+        #check for current walls
+        walls = {'n', 's', 'w', 'e'}-set(exits)
+        # print("WALLS",walls)
+        for x in walls:
+            map[curr_room][x] = 'x'        
     return map
 
 #Start walk loop
 # while True:
-directions_list=[{"direction":"w"},{"direction":"e"}] #,{"direction":"e"},{"direction":"w"}
+directions_list=[{"direction":"w"},{"direction":"e"},{"direction":"e"},{"direction":"w"}] #,{"direction":"e"},{"direction":"w"}
 #,{"direction":"n"},{"direction":"w"},{"direction":"e"},{"direction":"s"}
 current_data=directions_list[0]
-for trials in range(len(directions_list)):
+# for trials in range(len(directions_list)):
+while True:
     time.sleep(cooldown - ((time.time() - starttime) % cooldown))
     # print(f"Wake {time.time()-starttime}")
 
@@ -71,7 +78,17 @@ for trials in range(len(directions_list)):
     current_action='move/'
 
     #Choose next action data
-    current_data=directions_list[trials]  
+    # current_data=directions_list[trials]  
+    #######
+    # UNCOMMENT TO WALK AROUND
+    #######
+    cmds = input("-> ").lower().split(" ")
+    if cmds[0] in ["n", "s", "e", "w"]:
+        current_data={"direction":cmds[0]}
+    elif cmds[0] == "q":
+        break
+    else:
+        print("I did not understand that command.")
 
     # response=requests.post(SERVER+current_move, headers=SET_HEADERS, data=current_data)
     #Next Action
