@@ -161,18 +161,22 @@ print(curr_room,curr_coordinates,exits,cooldown)
 # for trials in range(len(directions_list)):
 cmds=[]
 while True:
+    # Make sure we havent moved or done anything yet.
     if current_action!=None:
         time.sleep(cooldown - ((time.time() - starttime) % cooldown))
 
     # Action INPUT
     if current_action not in ['auto_get','auto_sell','auto_confirm','auto_walk','auto_status']:
+        # send the player to the shop to sell off found items if weight exceeds the 75% of max carry weight
         if player['encumbrance']>player['strength']*.75:
             cmds=find_room(1)
             print(f"NEW PATH to 1",cmds)
+        # prompt user for what they want to do.
         if len(cmds)==0:
             cmds = input("-> ").lower().split(",")
        
         curr_cmd = cmds.pop(0).split(" ")
+
         if curr_cmd[0] in ["n", "s", "e", "w"]:
             current_action='move/'
             current_data={"direction":curr_cmd[0]}
@@ -230,8 +234,6 @@ while True:
         print("I did not understand that command.")
         current_action=None
 
-
-    # response=requests.post(SERVER+current_move, headers=SET_HEADERS, data=current_data)
     #Next Action
     if current_action=='move/':
         # Wise Explorer
