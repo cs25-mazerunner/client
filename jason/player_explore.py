@@ -69,6 +69,7 @@ def update_map():
     return world_map
 
 def find_direction():
+    found=[]
     q=Queue()
     q.enqueue((world_map[curr_room],[]))
     while q.size()>0:
@@ -80,28 +81,40 @@ def find_direction():
                 new_path=list(rm[1])
                 new_path.append(d[0])
                 return new_path
-            elif d[1] !='x':
+            elif d[1] !='x' and d[0]!=reverse_dirs[rm[1][-1]] and d[1] not in found:
                 new_path=list(rm[1])
                 new_path.append(d[0])
                 q.enqueue((world_map[d[1]],new_path ))
+                found.append(d[1])
 
 def find_room(target):
+    found=[]
     q=Queue()    
-    # q.enqueue((world_map[curr_room],[]))
-    # while q.size()>0:
-    #     rm=q.dequeue()
-    #     # print("ROOM",rm)
-    
-    #     for d in rm[0].items():
-    #         if d[1]=='?':
-    #             # print("APPEND",rm[1],d[0])
-    #             new_path=list(rm[1])
-    #             new_path.append(d[0])
-    #             return new_path
-    #         elif d[1] !='x':
-    #             new_path=list(rm[1])
-    #             new_path.append(d[0])
-    #             q.enqueue((world_map[d[1]],new_path ))
+    q.enqueue((world_map[curr_room],[]))
+    found.append(world_map[curr_room])
+    while q.size()>0:
+        rm=q.dequeue()
+        # print("ROOM",rm)
+        for d in rm[0].items():
+            print("FIND",rm[0],d[1],type(d[1]),target)
+            if d[1]==int(target):
+                print("FOUND ROOM")
+                new_path=list(rm[1])
+                new_path.append(d[0])
+                return new_path
+            elif d[1] not in ['x','?'] and d[1] not in found:
+                # print(rm)
+                if len(rm[1])>0 and d[0]!=reverse_dirs[rm[1][-1]]:
+                    new_path=list(rm[1])
+                    new_path.append(d[0])
+                    q.enqueue((world_map[d[1]],new_path ))
+                    found.append(d[1])
+                else:
+                    new_path=list(rm[1])
+                    new_path.append(d[0])
+                    q.enqueue((world_map[d[1]],new_path ))
+                    found.append(d[1])
+
 
 #init character
 response =requests.get(SERVER+'init/', headers=SET_HEADERS )
@@ -166,12 +179,12 @@ while True:
         elif curr_cmd[0] == "i":
             current_action='status/'
             current_data={}
-        elif curr_cmd[0] in ["o"]:
+        elif curr_cmd[0] == "o":
             current_action='sell/'
             current_data={"name":player['inventory'][0]}
             if curr_cmd[0]=="y":
                 current_data['confirm']='yes'
-        elif curr_cmd[0] in ["a"]:
+        elif curr_cmd[0] == "a":
             print("AUTOWALK")
             current_action='move/'
             cmds=find_direction()
@@ -180,9 +193,15 @@ while True:
             # sys.exit()
             new_dir=cmds.pop(0)
             current_data={"direction":new_dir}
-        elif curr_cmd[0] in ["p"]:
+        elif curr_cmd[0] == "p":
             current_action='pray/'
             current_data={}
+        elif curr_cmd[0] == "f":
+            current_action='move/'
+            cmds=find_room(curr_cmd[1])
+            print("FOUND",cmds)
+            new_dir=cmds.pop(0)
+            current_data={"direction":new_dir}
         else:
             print("I did not understand that command.")
             current_action=None
