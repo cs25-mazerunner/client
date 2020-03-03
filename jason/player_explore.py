@@ -172,7 +172,7 @@ while True:
 
     # Action IMPUT
     if current_action not in ['auto_get','auto_sell','auto_confirm','auto_walk','auto_status']:
-        if player['encumbrance']>player['strength']*.75:
+        if player['encumbrance']>player['strength']*.69:
             cmds=find_room(1)
             print(f"NEW PATH to 1",cmds)
         if len(cmds)==0:
@@ -214,6 +214,9 @@ while True:
             print("FOUND",cmds)
             new_dir=cmds.pop(0)
             current_data={"direction":new_dir}
+        elif curr_cmd[0] == "c":
+            current_action='change_name/'
+            current_data={"name":curr_cmd[0]}
         else:
             print("I did not understand that command.")
             current_action=None
@@ -266,11 +269,12 @@ while True:
         with open("room.txt",'w') as file:
             file.write(json.dumps(rooms))
         #Get items automatically if they are in the room.
-        if len(items)>0:
-            print("GET IT!")
-            current_action ='auto_get'
-        else:
-            cmds.insert(0,'i')
+        if player['gold']<1000:
+            if len(items)>0:
+                print("GET IT!")
+                current_action ='auto_get'
+            else:
+                cmds.insert(0,'i')
         if curr_room==1 and len(player['inventory'])>0:
             current_action='auto_sell'
     elif current_action=='take/':
@@ -287,9 +291,12 @@ while True:
         cooldown=r['cooldown']
         player['inventory'].append(current_data['name'])
         print("Items:",r['items'],"\nMSG:",r['messages'])
-        if len(r['items'])>0:
-            print("GET IT!")
-            current_action ='auto_get'
+        if player['gold']<1000:
+            if len(items)>0:
+                print("GET IT!")
+                current_action ='auto_get'
+            else:
+                cmds.insert(0,'i')
     elif current_action=='status/':
         try:
             # print("TRYING",current_action,current_data)
