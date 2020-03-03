@@ -17,8 +17,10 @@ SERVER=LAMBDA_SERVER
 #Current map supplied by server
 player={}
 world_map={}
+important_places={'store':1,'well':55}
 # for x in range(500):
 #     map[x]={"n": "?", "s": "?", "e": "?", "w": "?"}
+#get current Map
 with open("../map.txt",'r') as file:
     map_data=file.read()
     json_map = json.loads(map_data)
@@ -26,30 +28,19 @@ for item in json_map.keys():
     payload=json_map[item]
     item=int(item)
     world_map[item]=payload
+#get current Room Descriptions
+rooms={}
+with open("../room.txt",'r') as file:
+    desc_data=file.read()
+    json_map = json.loads(desc_data)
+for item in json_map.keys():
+    payload=json_map[item]
+    item=int(item)
+    rooms[item]=payload
 # print(world_map)
 # sys.exit()
 # Create oposites list
 reverse_dirs = {"n": "s", "s": "n", "e": "w", "w": "e", 'x': 'x'}
-
-#init character
-
-response =requests.get(SERVER+'init/', headers=SET_HEADERS )
-starttime=time.time()
-# pull LS values
-r=response.json()
-current_action="Init"
-curr_room=r['room_id']
-curr_coordinates=r['coordinates']
-exits=r['exits']
-cooldown=r['cooldown']
-print("ROOM",curr_room,curr_coordinates,"EXIT",exits,"COOL",cooldown)
-print("TITLE",r['title'],"\nDESC",r['description'],"\nItems:",r['items'],"\nERR:",r['errors'],"\nMSG:",r['messages'],'\n\n')
-# pull OS values
-# curr_world_map=response.map
-# curr_roominfo=response.roominfo
-# curr_team_locations=response.teamlocations
-
-print(curr_room,curr_coordinates,exits,cooldown)
 
 def update_map():
     if last_data['direction']!=None:
@@ -63,8 +54,46 @@ def update_map():
         walls = {'n', 's', 'w', 'e'}-set(exits)
         # print("WALLS",walls)
         for x in walls:
-            world_map[curr_room][x] = 'x'        
+            world_map[curr_room][x] = 'x'
+        rooms[curr_room]={'room_id':curr_room,
+        "title": r['title'],
+        "description": r['description'],
+        "coordinates": r['coordinates'],
+        "elevation": r['elevation'],
+        "terrain": r['terrain'],
+        "items": r['items'],
+        "exits": r['exits'],
+        "messages": r['messages'],
+        }   
     return world_map
+
+#init character
+response =requests.get(SERVER+'init/', headers=SET_HEADERS )
+starttime=time.time()
+# pull LS values
+r=response.json()
+curr_room=r['room_id']
+curr_coordinates=r['coordinates']
+exits=r['exits']
+cooldown=r['cooldown']
+print("ROOM",curr_room,curr_coordinates,"EXIT",exits,"COOL",cooldown)
+print("TITLE",r['title'],"\nDESC",r['description'],"\nItems:",r['items'],"\nERR:",r['errors'],"\nMSG:",r['messages'],'\n\n')
+time.sleep(cooldown - ((time.time() - starttime) % cooldown))
+#Pull player info
+current_action='status/'
+current_data={}
+response=requests.post(SERVER+current_action, headers=SET_HEADERS, json=current_data)
+starttime=time.time()
+r=response.json()
+cooldown=r['cooldown']
+player=dict(r)
+print(player)
+# pull OS values
+# curr_world_map=response.map
+# curr_roominfo=response.roominfo
+# curr_team_locations=response.teamlocations
+
+print(curr_room,curr_coordinates,exits,cooldown)
 
 #Start walk loop
 # while True:
@@ -83,26 +112,40 @@ while True:
     # current_data=directions_list[trials]  
 
     # Action IMPUT
-    cmds = input("-> ").lower().split(" ")
-    if cmds[0] in ["n", "s", "e", "w"]:
-        current_action='move/'
-        current_data={"direction":cmds[0]}
-    elif cmds[0] == "q":
-        break
-    elif cmds[0] == "g":
+    if current_action not in ['auto_get','auto_sell','auto_confirm']:
+        cmds = input("-> ").lower().split(" ")
+        if cmds[0] in ["n", "s", "e", "w"]:
+            current_action='move/'
+            current_data={"direction":cmds[0]}
+        elif cmds[0] == "q":
+            break
+        elif cmds[0] == "g":
+            current_action='take/'
+            current_data={"name":r['items'][0]}
+        elif cmds[0] == "i":
+            current_action='status/'
+            current_data={}
+        elif cmds[0] in ["o"]:
+            current_action='sell/'
+            current_data={"name":player['inventory'][0]}
+            if cmds[0]=="y":
+                current_data['confirm']='yes'
+        else:
+            print("I did not understand that command.")
+            current_action=None
+    elif current_action=='auto_get':
         current_action='take/'
         current_data={"name":r['items'][0]}
-    elif cmds[0] == "i":
-        current_action='status/'
-        current_data={}
-    elif cmds[0] in ["o","y"]:
+    elif current_action=='auto_sell':
         current_action='sell/'
         current_data={"name":player['inventory'][0]}
-        if cmds[0]=="y":
-            current_data['confirm']='yes'
+    elif current_action=='auto_confirm':
+        current_action='sell/'
+        current_data={"name":player['inventory'][0],"confirm":"yes"}
     else:
         print("I did not understand that command.")
         current_action=None
+
 
     # response=requests.post(SERVER+current_move, headers=SET_HEADERS, data=current_data)
     #Next Action
@@ -113,7 +156,7 @@ while True:
             current_data["next_room_id"]=str(world_map[curr_room][current_data['direction']])
         # Move 
         try:
-            print("TRYING",current_action,current_data)
+            # print("TRYING",current_action,current_data)
             response=requests.post(SERVER+current_action, headers=SET_HEADERS, json=current_data)
             response.raise_for_status()
         except HTTPError as http_err:
@@ -130,14 +173,23 @@ while True:
         curr_coordinates=r['coordinates']
         exits=r['exits']
         cooldown=r['cooldown']
+        items=r['items']
         print("ROOM",curr_room,curr_coordinates,"EXIT",exits,"COOL",cooldown)
         print("TITLE",r['title'],"\nDESC",r['description'],"\nItems:",r['items'],"\nERR:",r['errors'],"\nMSG:",r['messages'],'\n\n')
         update_map()#map,curr_room,last_room,current_data,last_data
         with open("../map.txt",'w') as file:
             file.write(json.dumps(world_map))
+        with open("../room.txt",'w') as file:
+            file.write(json.dumps(rooms))
+        #Get items automatically if they are in the room.
+        if len(items)>0:
+            print("GET IT!")
+            current_action ='auto_get'
+        if curr_room==1:
+            current_action='auto_sell'
     elif current_action=='take/':
         try:
-            print("TRYING",current_action,current_data)
+            # print("TRYING",current_action,current_data)
             response=requests.post(SERVER+current_action, headers=SET_HEADERS, json=current_data)
             response.raise_for_status()
         except HTTPError as http_err:
@@ -147,10 +199,14 @@ while True:
         starttime=time.time()
         r=response.json()
         cooldown=r['cooldown']
+        player['inventory'].append(current_data['name'])
         print("Items:",r['items'],"\nMSG:",r['messages'])
+        if len(items)>0:
+            print("GET IT!")
+            current_action ='auto_get'
     elif current_action=='status/':
         try:
-            print("TRYING",current_action,current_data)
+            # print("TRYING",current_action,current_data)
             response=requests.post(SERVER+current_action, headers=SET_HEADERS, json=current_data)
             response.raise_for_status()
         except HTTPError as http_err:
@@ -197,10 +253,16 @@ while True:
         r=response.json()
         cooldown=r['cooldown']
         print(r['messages'])
-
+        print("YO",current_data)
+        if current_data.get('confirm',None)==None:
+            current_action='auto_confirm'
+        elif current_data.get('confirm',None)=='yes':
+            player['inventory'].pop(0)
+            if len(player['inventory'])>0:
+                current_action='auto_sell'
     # elif current_action==:
     else:
-        print("Didn't Move")
+        print(f"Didn't Move: {current_action}")
 # print("world_map",world_map[0],world_map[1])
 #         # Check exits
 #     if reverse_dirs[last_direction] in next_directions:
