@@ -18,7 +18,7 @@ SERVER=LAMBDA_SERVER
 #Current map supplied by server
 player={}
 world_map={}
-important_places={'store':1,'well':55,'fly':22}
+important_places={'store':1,'well':55,'fly':22,'dash':461}
 # for x in range(500):
 #     map[x]={"n": "?", "s": "?", "e": "?", "w": "?"}
 #get current Map
@@ -103,9 +103,9 @@ def find_room(target):
         rm=q.dequeue()
         # print("ROOM",rm)
         for d in rm[0].items():
-            print("FIND",rm[0],d[1],type(d[1]),target)
+            # print("FIND",rm[0],d[1],type(d[1]),target)
             if d[1]==int(target):
-                print("FOUND ROOM")
+                # print("FOUND ROOM")
                 new_path=list(rm[1])
                 new_path.append(d[0])
                 return new_path
@@ -128,6 +128,8 @@ response =requests.get(SERVER+'init/', headers=SET_HEADERS )
 starttime=time.time()
 # pull LS values
 r=response.json()
+while not r.get('room_id',None):
+    time.sleep(100)
 curr_room=r['room_id']
 curr_coordinates=r['coordinates']
 exits=r['exits']
@@ -172,6 +174,7 @@ while True:
     if current_action not in ['auto_get','auto_sell','auto_confirm','auto_walk','auto_status']:
         if player['encumbrance']>player['strength']*.75:
             cmds=find_room(1)
+            print(f"NEW PATH to 1",cmds)
         if len(cmds)==0:
             cmds = input("-> ").lower().split(",")
         curr_cmd = cmds.pop(0).split(" ")
@@ -195,6 +198,7 @@ while True:
             print("AUTOWALK")
             current_action='move/'
             cmds=find_direction()
+            print("NEW PATH",cmds)
             cmds.append('a')
             # print("DIRS!",dir)
             # sys.exit()
@@ -206,6 +210,7 @@ while True:
         elif curr_cmd[0] == "f":
             current_action='move/'
             cmds=find_room(curr_cmd[1])
+            print(f"NEW PATH to {curr_cmd[1]}",cmds)
             print("FOUND",cmds)
             new_dir=cmds.pop(0)
             current_data={"direction":new_dir}
@@ -266,7 +271,7 @@ while True:
             current_action ='auto_get'
         else:
             cmds.insert(0,'i')
-        if curr_room==1:
+        if curr_room==1 and len(player['inventory'])>0:
             current_action='auto_sell'
     elif current_action=='take/':
         try:
@@ -338,7 +343,8 @@ while True:
         if current_data.get('confirm',None)==None:
             current_action='auto_confirm'
         elif current_data.get('confirm',None)=='yes':
-            player['inventory'].pop(0)
+            if len(player['inventory'])>0:
+                player['inventory'].pop(0)
             if len(player['inventory'])>0:
                 current_action='auto_sell'
     # elif current_action==:
