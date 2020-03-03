@@ -128,8 +128,8 @@ response =requests.get(SERVER+'init/', headers=SET_HEADERS )
 starttime=time.time()
 # pull LS values
 r=response.json()
-while not r.get('room_id',None):
-    time.sleep(100)
+# while not r.get('room_id',None):
+#     time.sleep(100)
 curr_room=r['room_id']
 curr_coordinates=r['coordinates']
 exits=r['exits']
@@ -161,23 +161,22 @@ print(curr_room,curr_coordinates,exits,cooldown)
 # for trials in range(len(directions_list)):
 cmds=[]
 while True:
+    # Make sure we havent moved or done anything yet.
     if current_action!=None:
         time.sleep(cooldown - ((time.time() - starttime) % cooldown))
-    # print(f"Wake {time.time()-starttime}")
 
-    #Choose next action
-
-    #Choose next action data
-    # current_data=directions_list[trials]  
-
-    # Action IMPUT
+    # Action INPUT
     if current_action not in ['auto_get','auto_sell','auto_confirm','auto_walk','auto_status']:
-        if player['encumbrance']>player['strength']*.69:
+        # send the player to the shop to sell off found items if weight exceeds the 75% of max carry weight
+        if player['encumbrance']>player['strength']*.75:
             cmds=find_room(1)
             print(f"NEW PATH to 1",cmds)
+        # prompt user for what they want to do.
         if len(cmds)==0:
             cmds = input("-> ").lower().split(",")
+       
         curr_cmd = cmds.pop(0).split(" ")
+
         if curr_cmd[0] in ["n", "s", "e", "w"]:
             current_action='move/'
             current_data={"direction":curr_cmd[0]}
@@ -186,14 +185,17 @@ while True:
         elif curr_cmd[0] == "g":
             current_action='take/'
             current_data={"name":r['items'][0]}
+        # check inventory
         elif curr_cmd[0] == "i":
             current_action='status/'
             current_data={}
+        # sell items
         elif curr_cmd[0] == "o":
             current_action='sell/'
             current_data={"name":player['inventory'][0]}
             if curr_cmd[0]=="y":
                 current_data['confirm']='yes'
+        # auto walk / move
         elif curr_cmd[0] == "a":
             print("AUTOWALK")
             current_action='move/'
@@ -204,9 +206,11 @@ while True:
             # sys.exit()
             new_dir=cmds.pop(0)
             current_data={"direction":new_dir}
+        # pray
         elif curr_cmd[0] == "p":
             current_action='pray/'
             current_data={}
+        # jump to a room
         elif curr_cmd[0] == "f":
             current_action='move/'
             cmds=find_room(curr_cmd[1])
@@ -214,9 +218,6 @@ while True:
             print("FOUND",cmds)
             new_dir=cmds.pop(0)
             current_data={"direction":new_dir}
-        elif curr_cmd[0] == "c":
-            current_action='change_name/'
-            current_data={"name":curr_cmd[0]}
         else:
             print("I did not understand that command.")
             current_action=None
@@ -233,8 +234,6 @@ while True:
         print("I did not understand that command.")
         current_action=None
 
-
-    # response=requests.post(SERVER+current_move, headers=SET_HEADERS, data=current_data)
     #Next Action
     if current_action=='move/':
         # Wise Explorer
