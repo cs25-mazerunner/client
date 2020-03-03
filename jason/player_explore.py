@@ -66,27 +66,32 @@ def update_map():
 
 #Start walk loop
 # while True:
-directions_list=[{"direction":"w"},{"direction":"e"},{"direction":"e"},{"direction":"w"}] #,{"direction":"e"},{"direction":"w"}
+# directions_list=[{"direction":"w"},{"direction":"e"},{"direction":"e"},{"direction":"w"}] #,{"direction":"e"},{"direction":"w"}
 #,{"direction":"n"},{"direction":"w"},{"direction":"e"},{"direction":"s"}
-current_data=directions_list[0]
+# current_data=directions_list[0]
 # for trials in range(len(directions_list)):
 while True:
     time.sleep(cooldown - ((time.time() - starttime) % cooldown))
     # print(f"Wake {time.time()-starttime}")
 
     #Choose next action
-    current_action='move/'
 
     #Choose next action data
     # current_data=directions_list[trials]  
-    #######
-    # UNCOMMENT TO WALK AROUND
-    #######
+
+    # Action IMPUT
     cmds = input("-> ").lower().split(" ")
     if cmds[0] in ["n", "s", "e", "w"]:
+        current_action='move/'
         current_data={"direction":cmds[0]}
     elif cmds[0] == "q":
         break
+    elif cmds[0] == "g":
+        current_action='take/'
+        current_data={"name":r['items'][0]}
+    elif cmds[0] == "i":
+        current_action='status/'
+        current_data={}
     else:
         print("I did not understand that command.")
 
@@ -121,6 +126,54 @@ while True:
         update_map()#map,curr_room,last_room,current_data,last_data
         with open("../map.txt",'w') as file:
             file.write(json.dumps(map))
+    elif current_action=='take/':
+        try:
+            print("TRYING",current_action,current_data)
+            response=requests.post(SERVER+current_action, headers=SET_HEADERS, json=current_data)
+            response.raise_for_status()
+        except HTTPError as http_err:
+            print(f'HTTP error occurred: {http_err}')
+        except Exception as err:
+            print(f'Other error occurred: {err}')
+        starttime=time.time()
+        r=response.json()
+        cooldown=r['cooldown']
+        print("Items:",r['items'],"\nMSG:",r['messages'])
+    elif current_action=='status/':
+        try:
+            print("TRYING",current_action,current_data)
+            response=requests.post(SERVER+current_action, headers=SET_HEADERS, json=current_data)
+            response.raise_for_status()
+        except HTTPError as http_err:
+            print(f'HTTP error occurred: {http_err}')
+        except Exception as err:
+            print(f'Other error occurred: {err}')
+        starttime=time.time()
+        r=response.json()
+        cooldown=r['cooldown']
+        print("Name:"
+        ,r['name']
+        ,"\nEncumbrance:"
+        ,r['encumbrance']
+        ,"\nStrength:"
+        ,r['strength']
+        ,"\nSpeed:"
+        ,r['speed']
+        ,"\nGold:"
+        ,r['gold']
+        ,"\nBodywear:"
+        ,r['bodywear']
+        ,"\nFootwear:"
+        ,r['footwear']
+        ,"\nInventory:"
+        ,r['inventory']
+        ,"\nStatus:"
+        ,r['status']
+        ,"\nErrors:"
+        ,r['errors']
+        ,"\nMessages:"
+        ,r['messages']
+        )                  
     else:
         print("Didn't Move")
 # print("MAP",map[0],map[1])
