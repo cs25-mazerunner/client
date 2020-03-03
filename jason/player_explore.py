@@ -3,6 +3,8 @@ import time
 from dotenv import load_dotenv
 import os
 from requests.exceptions import HTTPError
+import json
+import sys
 
 load_dotenv()
 secret_key=os.getenv("JASON_KEY")
@@ -13,18 +15,22 @@ OS_SERVER=''
 SERVER=LAMBDA_SERVER
 
 #Current map supplied by server
-map = {}
-for x in range(500):
-    map[x]={"n": "?", "s": "?", "e": "?", "w": "?"}
+map={}
+# for x in range(500):
+#     map[x]={"n": "?", "s": "?", "e": "?", "w": "?"}
+with open("../map.txt",'r') as file:
+    map_data=file.read()
+    json_map = json.loads(map_data)
+for item in json_map.keys():
+    payload=json_map[item]
+    item=int(item)
+    map[item]=payload
+# print(map)
+# sys.exit()
 # Create oposites list
 reverse_dirs = {"n": "s", "s": "n", "e": "w", "w": "e", 'x': 'x'}
 
-# #Cooldown
-
-
-
 #init character
-# requests.header['Authorization']='Token {secret_key}'
 
 response =requests.get(SERVER+'init/', headers=SET_HEADERS )
 starttime=time.time()
@@ -54,7 +60,7 @@ def update_map():
 
 #Start walk loop
 # while True:
-directions_list=[{"direction":"w"},{"direction":"e"},{"direction":"e"},{"direction":"w"}] 
+directions_list=[{"direction":"w"},{"direction":"e"}] #,{"direction":"e"},{"direction":"w"}
 #,{"direction":"n"},{"direction":"w"},{"direction":"e"},{"direction":"s"}
 current_data=directions_list[0]
 for trials in range(len(directions_list)):
@@ -96,9 +102,11 @@ for trials in range(len(directions_list)):
         print("ROOM",curr_room,curr_coordinates,"EXIT",exits,"COOL",cooldown)
         print("TITLE",r['title'],"\nDESC",r['description'],"\nItems:",r['items'],"\nERR:",r['errors'],"\nMSG:",r['messages'],'\n\n')
         update_map()#map,curr_room,last_room,current_data,last_data
+        with open("../map.txt",'w') as file:
+            file.write(json.dumps(map))
     else:
         print("Didn't Move")
-print("MAP",map[0],map[1])
+# print("MAP",map[0],map[1])
 #         # Check exits
 #     if reverse_dirs[last_direction] in next_directions:
 #         next_directions.remove(reverse_dirs[last_direction])
