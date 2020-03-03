@@ -67,6 +67,9 @@ def update_map():
         }   
     return world_map
 
+def find_direction():
+    pass
+
 #init character
 response =requests.get(SERVER+'init/', headers=SET_HEADERS )
 starttime=time.time()
@@ -101,6 +104,7 @@ print(curr_room,curr_coordinates,exits,cooldown)
 #,{"direction":"n"},{"direction":"w"},{"direction":"e"},{"direction":"s"}
 # current_data=directions_list[0]
 # for trials in range(len(directions_list)):
+cmds=[]
 while True:
     if current_action!=None:
         time.sleep(cooldown - ((time.time() - starttime) % cooldown))
@@ -112,24 +116,32 @@ while True:
     # current_data=directions_list[trials]  
 
     # Action IMPUT
-    if current_action not in ['auto_get','auto_sell','auto_confirm']:
-        cmds = input("-> ").lower().split(" ")
-        if cmds[0] in ["n", "s", "e", "w"]:
+    if current_action not in ['auto_get','auto_sell','auto_confirm','auto_walk']:
+        if len(cmds)==0:
+            cmds = input("-> ").lower().split(",")
+        curr_cmd = cmds.pop(0).split(" ")
+        if curr_cmd[0] in ["n", "s", "e", "w"]:
             current_action='move/'
-            current_data={"direction":cmds[0]}
-        elif cmds[0] == "q":
+            current_data={"direction":curr_cmd[0]}
+        elif curr_cmd[0] == "q":
             break
-        elif cmds[0] == "g":
+        elif curr_cmd[0] == "g":
             current_action='take/'
             current_data={"name":r['items'][0]}
-        elif cmds[0] == "i":
+        elif curr_cmd[0] == "i":
             current_action='status/'
             current_data={}
-        elif cmds[0] in ["o"]:
+        elif curr_cmd[0] in ["o"]:
             current_action='sell/'
             current_data={"name":player['inventory'][0]}
-            if cmds[0]=="y":
+            if curr_cmd[0]=="y":
                 current_data['confirm']='yes'
+        elif curr_cmd[0] in ["a"]:
+            print("AUTOWALK")
+            cmds.push('a')
+            current_action='move/'
+            dir=find_direction()
+            current_data={"direction":dir}
         else:
             print("I did not understand that command.")
             current_action=None
