@@ -22,7 +22,7 @@ important_places={'store':1,'well':55,'fly':22}
 # for x in range(500):
 #     map[x]={"n": "?", "s": "?", "e": "?", "w": "?"}
 #get current Map
-with open("../map.txt",'r') as file:
+with open("map.txt",'r') as file:
     map_data=file.read()
     json_map = json.loads(map_data)
 for item in json_map.keys():
@@ -31,7 +31,7 @@ for item in json_map.keys():
     world_map[item]=payload
 #get current Room Descriptions
 rooms={}
-with open("../room.txt",'r') as file:
+with open("room.txt",'r') as file:
     desc_data=file.read()
     json_map = json.loads(desc_data)
 for item in json_map.keys():
@@ -256,9 +256,9 @@ while True:
         print("ROOM",curr_room,curr_coordinates,"EXIT",exits,"COOL",cooldown)
         print("TITLE",r['title'],"\nDESC",r['description'],"\nItems:",r['items'],"\nERR:",r['errors'],"\nMSG:",r['messages'],'\n\n')
         update_map()#map,curr_room,last_room,current_data,last_data
-        with open("../map.txt",'w') as file:
+        with open("map.txt",'w') as file:
             file.write(json.dumps(world_map))
-        with open("../room.txt",'w') as file:
+        with open("room.txt",'w') as file:
             file.write(json.dumps(rooms))
         #Get items automatically if they are in the room.
         if len(items)>0:
