@@ -211,12 +211,11 @@ while True:
             current_action='move/'
             cmds=find_room(curr_cmd[1])
             print(f"NEW PATH to {curr_cmd[1]}",cmds)
-            print("FOUND",cmds)
             new_dir=cmds.pop(0)
             current_data={"direction":new_dir}
         elif curr_cmd[0] == "c":
             current_action='change_name/'
-            current_data={"name":curr_cmd[0]}
+            current_data={"name":curr_cmd[1]}
         else:
             print("I did not understand that command.")
             current_action=None
@@ -368,33 +367,29 @@ while True:
         r=response.json()
         cooldown=r['cooldown']
         print(r['messages'],'\n',r['errors'])
+    elif current_action=='change_name/':
+        try:
+            print("TRYING",current_action,current_data)
+            response=requests.post(SERVER+current_action, headers=SET_HEADERS, json=current_data)
+            response.raise_for_status()
+        except HTTPError as http_err:
+            print(f'HTTP error occurred: {http_err}')
+        except Exception as err:
+            print(f'Other error occurred: {err}')
+        starttime=time.time()
+        r=response.json()
+        cooldown=r['cooldown']
+        print(r['messages'],'\n',r['errors'])
+        time.sleep(cooldown - ((time.time() - starttime) % cooldown))
+        current_data["confirm"]="aye"
+        print("DATA",current_data)
+        try:
+            print("TRYING",current_action,current_data)
+            response=requests.post(SERVER+current_action, headers=SET_HEADERS, json=current_data)
+            response.raise_for_status()
+        except HTTPError as http_err:
+            print(f'HTTP error occurred: {http_err}')
+        except Exception as err:
+            print(f'Other error occurred: {err}')
     else:
         print(f"Didn't Move: {current_action}")
-# print("world_map",world_map[0],world_map[1])
-#         # Check exits
-#     if reverse_dirs[last_direction] in next_directions:
-#         next_directions.remove(reverse_dirs[last_direction])
-#     # Continue straight if possible
-#     if last_direction in next_directions and player.current_room.get_room_in_direction(last_direction).id not in visited:
-#         update_records(last_direction)
-#     else:
-#         # Otherwise turn or reorient
-#         for x in next_directions:
-#             # print("ROOMVIS",world_map[player.current_room.id],player.current_room.get_room_in_direction(x).id)
-#             if player.current_room.get_room_in_direction(x).id in visited:
-#                 world_map[player.current_room.id][x]=player.current_room.get_room_in_direction(x).id
-#             if world_map[player.current_room.id][x]!='?':
-#                     next_directions.remove(x)
-#             # print("NXTDIR",next_directions)
-#         if len(next_directions)>0:
-#             last_direction=random.sample(next_directions,1)[0]
-#             update_records(last_direction)
-#         else:
-#             # re-orient
-#             gotit=find_new_room(player.current_room.id)
-#             # print("GOTIT",gotit,player.current_room.id)
-#             for i in gotit:
-#                 update_records(i)
-#                 last_direction='x'
-
-#     break
