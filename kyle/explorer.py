@@ -8,7 +8,7 @@ import sys
 from util import Stack, Queue
 
 load_dotenv()
-secret_key=os.getenv("MICHAEL_KEY")
+secret_key=os.getenv("KYLE_KEY")
 SET_HEADERS={'Authorization':f'Token {secret_key}'}
 
 LAMBDA_SERVER='https://lambda-treasure-hunt.herokuapp.com/api/adv/'
@@ -18,22 +18,18 @@ SERVER=LAMBDA_SERVER
 #Current map supplied by server
 player={}
 world_map={}
-important_places={'store':1,'well':55,'fly':22, 'pirate': 467, 'sandofsky': 492, 'transmogrifier': 495}
-
+important_places={'store':1,'well':55,'fly':22,'dash':461}
 # for x in range(500):
 #     map[x]={"n": "?", "s": "?", "e": "?", "w": "?"}
-
-####get current Map
-with open("map_backup.txt",'r') as file:
+#get current Map
+with open("map.txt",'r') as file:
     map_data=file.read()
     json_map = json.loads(map_data)
 for item in json_map.keys():
     payload=json_map[item]
     item=int(item)
     world_map[item]=payload
-# print("World map: ", world_map)
-
-####get current Room Descriptions
+#get current Room Descriptions
 rooms={}
 with open("room.txt",'r') as file:
     desc_data=file.read()
@@ -42,7 +38,7 @@ for item in json_map.keys():
     payload=json_map[item]
     item=int(item)
     rooms[item]=payload
-
+# print(world_map)
 # sys.exit()
 # Create oposites list
 reverse_dirs = {"n": "s", "s": "n", "e": "w", "w": "e", 'x': 'x'}
@@ -109,7 +105,7 @@ def find_room(target):
         for d in rm[0].items():
             # print("FIND",rm[0],d[1],type(d[1]),target)
             if d[1]==int(target):
-                print("FOUND ROOM")
+                # print("FOUND ROOM")
                 new_path=list(rm[1])
                 new_path.append(d[0])
                 return new_path
@@ -126,22 +122,14 @@ def find_room(target):
                     q.enqueue((world_map[d[1]],new_path ))
                     found.append(d[1])
 
-last_block = {
-    "proof": 122972216,
-    "difficulty": 6,
-    "cooldown": 1.0,
-    "messages": [],
-    "errors": []
-}
-
-# def mine():
-
 
 #init character
 response =requests.get(SERVER+'init/', headers=SET_HEADERS )
 starttime=time.time()
 # pull LS values
 r=response.json()
+while not r.get('room_id',None):
+    time.sleep(100)
 curr_room=r['room_id']
 curr_coordinates=r['coordinates']
 exits=r['exits']
@@ -172,7 +160,6 @@ print(curr_room,curr_coordinates,exits,cooldown)
 # current_data=directions_list[0]
 # for trials in range(len(directions_list)):
 cmds=[]
-new_proof = ''
 while True:
     if current_action!=None:
         time.sleep(cooldown - ((time.time() - starttime) % cooldown))
@@ -185,7 +172,7 @@ while True:
 
     # Action IMPUT
     if current_action not in ['auto_get','auto_sell','auto_confirm','auto_walk','auto_status']:
-        if player['encumbrance']>player['strength']*.75:
+        if player['encumbrance']>player['strength']*.69:
             cmds=find_room(1)
             print(f"NEW PATH to 1",cmds)
         if len(cmds)==0:
@@ -207,21 +194,16 @@ while True:
             current_data={"name":player['inventory'][0]}
             if curr_cmd[0]=="y":
                 current_data['confirm']='yes'
-        elif curr_cmd[0] == "pr":
-            current_action='get_proof/'
-            current_data={}
         elif curr_cmd[0] == "a":
             print("AUTOWALK")
             current_action='move/'
             cmds=find_direction()
             print("NEW PATH",cmds)
-            print("cmds: ", cmds)
             cmds.append('a')
             # print("DIRS!",dir)
             # sys.exit()
             new_dir=cmds.pop(0)
             current_data={"direction":new_dir}
-            
         elif curr_cmd[0] == "p":
             current_action='pray/'
             current_data={}
@@ -229,38 +211,23 @@ while True:
             current_action='move/'
             cmds=find_room(curr_cmd[1])
             print(f"NEW PATH to {curr_cmd[1]}",cmds)
-            print("FOUND",cmds)
             new_dir=cmds.pop(0)
             current_data={"direction":new_dir}
-        elif curr_cmd[0] == "ex":
-            current_action="examine/"
-            current_data={"name": ' '.join(curr_cmd[1:])}
         elif curr_cmd[0] == "c":
             current_action='change_name/'
             current_data={"name":curr_cmd[1]}
-        elif curr_cmd[0] == "m":
-            current_action='mine/'
-            current_data={"proof": new_proof}
+        elif curr_cmd[0] == "ex":
+            current_action = 'examine/'
+            current_data={"name": curr_cmd[1]}
         else:
             print("I did not understand that command.")
             current_action=None
     elif current_action=='auto_get':
         current_action='take/'
         current_data={"name":r['items'][0]}
-
     elif current_action=='auto_sell':
-        # if len(player['inventory']) > 0:
         current_action='sell/'
         current_data={"name":player['inventory'][0]}
-        # else:
-        #     current_action='move/'
-        #     cmds=find_direction()
-        #     cmds.append('a')
-        #     # print("DIRS!",dir)
-        #     # sys.exit()
-        #     new_dir=cmds.pop(0)
-        #     current_data={"direction":new_dir}
-
     elif current_action=='auto_confirm':
         current_action='sell/'
         current_data={"name":player['inventory'][0],"confirm":"yes"}
@@ -299,11 +266,11 @@ while True:
         print("ROOM",curr_room,curr_coordinates,"EXIT",exits,"COOL",cooldown)
         print("TITLE",r['title'],"\nDESC",r['description'],"\nItems:",r['items'],"\nERR:",r['errors'],"\nMSG:",r['messages'],'\n\n')
         update_map()#map,curr_room,last_room,current_data,last_data
-        with open("map_backup.txt",'w') as file:
+        with open("map.txt",'w') as file:
             file.write(json.dumps(world_map))
         with open("room.txt",'w') as file:
             file.write(json.dumps(rooms))
-        #Get items automatically if they are in the room. (AVOIDING THS FOR RIGHT NOW)
+        #Get items automatically if they are in the room.
         if player['gold']<1000:
             if len(items)>0:
                 print("GET IT!")
@@ -385,7 +352,8 @@ while True:
         if current_data.get('confirm',None)==None:
             current_action='auto_confirm'
         elif current_data.get('confirm',None)=='yes':
-            player['inventory'].pop(0)
+            if len(player['inventory'])>0:
+                player['inventory'].pop(0)
             if len(player['inventory'])>0:
                 current_action='auto_sell'
     # elif current_action==:
@@ -445,65 +413,7 @@ while True:
         print(r["messages"], '\n', r['errors'])
         with open('well_message.txt', 'w') as f:
             f.write(r["description"])
-    elif current_action=="get_proof/":
-        try:
-            response=requests.get('https://lambda-treasure-hunt.herokuapp.com/api/bc/last_proof/', headers=SET_HEADERS, json=current_data )
-            response.raise_for_status()
-        except HTTPError as http_err:
-            print(f'HTTP error occurred: {http_err}')
-        except Exception as err:
-            print(f'Other error occurred: {err}')
-        # if the req is good start a timer
-        starttime = time.time()
-        # make the data JSON
-        r = response.json()
-        # grab the wait time
-        cooldown = r['cooldown']
-        print(r["messages"], '\n', r['errors'])
-    elif current_action=='mine/':
-        # make a network req
-        try:
-            print("Mining...", current_action, current_data)
-            response=requests.post('https://lambda-treasure-hunt.herokuapp.com/api/bc/mine/', headers=SET_HEADERS, json=current_data)
-            response.raise_for_status()
-        except HTTPError as http_err:
-            print(f'HTTP error occurred: {http_err}')
-        except Exception as err:
-            print(f'Other error occurred: {err}')
-        # if the req is good start a timer
-        starttime = time.time()
-        # make the data JSON
-        r = response.json()
-        # grab the wait time
-        cooldown = r['cooldown']
-        print(r["messages"], '\n', r['errors'])
+        
+        
     else:
         print(f"Didn't Move: {current_action}")
-# print("world_map",world_map[0],world_map[1])
-#         # Check exits
-#     if reverse_dirs[last_direction] in next_directions:
-#         next_directions.remove(reverse_dirs[last_direction])
-#     # Continue straight if possible
-#     if last_direction in next_directions and player.current_room.get_room_in_direction(last_direction).id not in visited:
-#         update_records(last_direction)
-#     else:
-#         # Otherwise turn or reorient
-#         for x in next_directions:
-#             # print("ROOMVIS",world_map[player.current_room.id],player.current_room.get_room_in_direction(x).id)
-#             if player.current_room.get_room_in_direction(x).id in visited:
-#                 world_map[player.current_room.id][x]=player.current_room.get_room_in_direction(x).id
-#             if world_map[player.current_room.id][x]!='?':
-#                     next_directions.remove(x)
-#             # print("NXTDIR",next_directions)
-#         if len(next_directions)>0:
-#             last_direction=random.sample(next_directions,1)[0]
-#             update_records(last_direction)
-#         else:
-#             # re-orient
-#             gotit=find_new_room(player.current_room.id)
-#             # print("GOTIT",gotit,player.current_room.id)
-#             for i in gotit:
-#                 update_records(i)
-#                 last_direction='x'
-
-#     break
