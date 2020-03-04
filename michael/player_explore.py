@@ -9,10 +9,12 @@ from util import Stack, Queue
 import random
 import hashlib
 
+
+#####
+################ INITALIZE VALUES ################
 load_dotenv()
 secret_key=os.getenv("MICHAEL_KEY")
 SET_HEADERS={'Authorization':f'Token {secret_key}'}
-
 LAMBDA_SERVER='https://lambda-treasure-hunt.herokuapp.com/api/adv/'
 OS_SERVER=''
 SERVER=LAMBDA_SERVER
@@ -21,9 +23,6 @@ SERVER=LAMBDA_SERVER
 player={}
 world_map={}
 important_places={'store':1,'well':55,'fly':22, 'pirate': 467, 'sandofsky': 492, 'transmogrifier': 495}
-
-# for x in range(500):
-#     map[x]={"n": "?", "s": "?", "e": "?", "w": "?"}
 
 ####get current Map
 with open("map_backup.txt",'r') as file:
@@ -45,7 +44,6 @@ for item in json_map.keys():
     item=int(item)
     rooms[item]=payload
 
-# sys.exit()
 # Create oposites list
 reverse_dirs = {"n": "s", "s": "n", "e": "w", "w": "e", 'x': 'x'}
 
@@ -57,6 +55,15 @@ last_block = {
     "errors": []
 }
 
+###################################################
+
+
+
+
+
+
+#####
+################ FUNCTIONS ################
 def update_map():
     if last_data['direction']!=None:
         # print("WTTF",last_room,world_map[last_room][reverse_dirs[last_data['direction']]],curr_room)
@@ -107,7 +114,6 @@ def find_direction():
                     q.enqueue((world_map[d[1]],new_path ))
                     found.append(d[1])
 
-
 def find_room(target):
     found=[]
     q=Queue()    
@@ -135,7 +141,6 @@ def find_room(target):
                     new_path.append(d[0])
                     q.enqueue((world_map[d[1]],new_path ))
                     found.append(d[1])
-
 
 def valid_proof(last_proof, proof):
     """
@@ -169,10 +174,14 @@ def proof_of_work(last_proof):
     print("Finished! Valid proof is: ", proof)
     return proof
 
-# def mine():
-#     last_proof = last_block['proof']
-#     new_proof = proof_of_work(last_block)
+###################################################
         
+
+
+
+
+#####
+################ INITIALIZE PLAYER ################
 
 #init character
 response =requests.get(SERVER+'init/', headers=SET_HEADERS )
@@ -186,6 +195,7 @@ cooldown=r['cooldown']
 print("ROOM",curr_room,curr_coordinates,"EXIT",exits,"COOL",cooldown)
 print("TITLE",r['title'],"\nDESC",r['description'],"\nItems:",r['items'],"\nERR:",r['errors'],"\nMSG:",r['messages'],'\n\n')
 time.sleep(cooldown - ((time.time() - starttime) % cooldown))
+
 #Pull player info
 current_action='status/'
 current_data={}
@@ -200,28 +210,31 @@ print(player)
 # curr_roominfo=response.roominfo
 # curr_team_locations=response.teamlocations
 
-print(curr_room,curr_coordinates,exits,cooldown)
+print("CURRENT ROOM: ", curr_room, "Current coordinates: ", curr_coordinates,"Current exits: ", exits, "Cooldown: ", cooldown)
 
-#Start walk loop
-# while True:
-# directions_list=[{"direction":"w"},{"direction":"e"},{"direction":"e"},{"direction":"w"}] #,{"direction":"e"},{"direction":"w"}
-#,{"direction":"n"},{"direction":"w"},{"direction":"e"},{"direction":"s"}
-# current_data=directions_list[0]
-# for trials in range(len(directions_list)):
 cmds=[]
+###################################################
+
+
+
+
+
+
+
+
+
+#####
+################ COMMAND INPUT REPL ################
 
 while True:
     if current_action!=None:
         time.sleep(cooldown - ((time.time() - starttime) % cooldown))
-    # print(f"Wake {time.time()-starttime}")
 
     #Choose next action
 
-    #Choose next action data
-    # current_data=directions_list[trials]  
-
-    # Action IMPUT
+    # Action INPUT
     if current_action not in ['auto_get','auto_sell','auto_confirm','auto_walk','auto_status']:
+        
         if player['encumbrance']>player['strength']*.75:
             cmds=find_room(1)
             print(f"NEW PATH to 1",cmds)
@@ -231,22 +244,24 @@ while True:
         if curr_cmd[0] in ["n", "s", "e", "w"]:
             current_action='move/'
             current_data={"direction":curr_cmd[0]}
+        
         elif curr_cmd[0] == "q":
             break
+        
         elif curr_cmd[0] == "g":
             current_action='take/'
             current_data={"name":r['items'][0]}
+        
         elif curr_cmd[0] == "i":
             current_action='status/'
             current_data={}
+        
         elif curr_cmd[0] == "o":
             current_action='sell/'
             current_data={"name":player['inventory'][0]}
             if curr_cmd[0]=="y":
                 current_data['confirm']='yes'
-        elif curr_cmd[0] == "pr":
-            current_action='get_proof/'
-            current_data={}
+        
         elif curr_cmd[0] == "a":
             print("AUTOWALK")
             current_action='move/'
@@ -262,6 +277,7 @@ while True:
         elif curr_cmd[0] == "p":
             current_action='pray/'
             current_data={}
+        
         elif curr_cmd[0] == "f":
             current_action='move/'
             cmds=find_room(curr_cmd[1])
@@ -269,16 +285,24 @@ while True:
             print("FOUND",cmds)
             new_dir=cmds.pop(0)
             current_data={"direction":new_dir}
+        
         elif curr_cmd[0] == "ex":
             current_action="examine/"
             current_data={"name": ' '.join(curr_cmd[1:])}
+        
         elif curr_cmd[0] == "c":
             current_action='change_name/'
             current_data={"name":curr_cmd[1]}
+        
+        elif curr_cmd[0] == "pr":
+            current_action='get_proof/'
+            current_data={}
+        
         elif curr_cmd[0] == "m":
             current_action='mine/'
             new_proof = proof_of_work(last_block['proof'])
             current_data={"proof":new_proof}
+        
         else:
             print("I did not understand that command.")
             current_action=None
@@ -302,13 +326,22 @@ while True:
     elif current_action=='auto_confirm':
         current_action='sell/'
         current_data={"name":player['inventory'][0],"confirm":"yes"}
+    
     else:
         print("I did not understand that command.")
         current_action=None
 
+###################################################
 
-    # response=requests.post(SERVER+current_move, headers=SET_HEADERS, data=current_data)
-    #Next Action
+
+
+
+
+
+
+#####
+################ LAMBDA ENDPOINTS // SERVER REQUESTS ################
+
     if current_action=='move/':
         # Wise Explorer
         # print("WTF",current_data['direction'],world_map[curr_room][current_data['direction']])
@@ -350,6 +383,7 @@ while True:
                 cmds.insert(0,'i')
         if curr_room==1 and len(player['inventory'])>0:
             current_action='auto_sell'
+    
     elif current_action=='take/':
         try:
             # print("TRYING",current_action,current_data)
@@ -370,6 +404,7 @@ while True:
                 current_action ='auto_get'
             else:
                 cmds.insert(0,'i')
+    
     elif current_action=='status/':
         try:
             # print("TRYING",current_action,current_data)
@@ -406,6 +441,7 @@ while True:
         ,"\nMessages:"
         ,r['messages']
         )                  
+    
     elif current_action=='sell/':
         try:
             print("TRYING",current_action,current_data)
@@ -426,7 +462,7 @@ while True:
             player['inventory'].pop(0)
             if len(player['inventory'])>0:
                 current_action='auto_sell'
-    # elif current_action==:
+
     elif current_action=='pray/':
         try:
             print("TRYING",current_action,current_data)
@@ -440,6 +476,7 @@ while True:
         r=response.json()
         cooldown=r['cooldown']
         print(r['messages'],'\n',r['errors'])
+    
     elif current_action=='change_name/':
         try:
             print("TRYING",current_action,current_data)
@@ -464,6 +501,7 @@ while True:
             print(f'HTTP error occurred: {http_err}')
         except Exception as err:
             print(f'Other error occurred: {err}')
+    
     elif current_action=='examine/':
         # make a network req
         try:
@@ -483,6 +521,7 @@ while True:
         print(r["messages"], '\n', r['errors'])
         with open('well_message.txt', 'w') as f:
             f.write(r["description"])
+    
     elif current_action=="get_proof/":
         try:
             response=requests.get('https://lambda-treasure-hunt.herokuapp.com/api/bc/last_proof/', headers=SET_HEADERS, json=current_data )
@@ -502,6 +541,7 @@ while True:
         # grab the wait time
         cooldown = r['cooldown']
         # print(r["messages"], '\n', r['errors'])
+    
     elif current_action=='mine/':
         try:
             print("Mining...", current_action, current_data)
@@ -519,33 +559,8 @@ while True:
         # grab the wait time
         cooldown = r['cooldown']
         print(r["messages"], '\n', r['errors'])
+    
     else:
         print(f"Didn't Move: {current_action}")
-# print("world_map",world_map[0],world_map[1])
-#         # Check exits
-#     if reverse_dirs[last_direction] in next_directions:
-#         next_directions.remove(reverse_dirs[last_direction])
-#     # Continue straight if possible
-#     if last_direction in next_directions and player.current_room.get_room_in_direction(last_direction).id not in visited:
-#         update_records(last_direction)
-#     else:
-#         # Otherwise turn or reorient
-#         for x in next_directions:
-#             # print("ROOMVIS",world_map[player.current_room.id],player.current_room.get_room_in_direction(x).id)
-#             if player.current_room.get_room_in_direction(x).id in visited:
-#                 world_map[player.current_room.id][x]=player.current_room.get_room_in_direction(x).id
-#             if world_map[player.current_room.id][x]!='?':
-#                     next_directions.remove(x)
-#             # print("NXTDIR",next_directions)
-#         if len(next_directions)>0:
-#             last_direction=random.sample(next_directions,1)[0]
-#             update_records(last_direction)
-#         else:
-#             # re-orient
-#             gotit=find_new_room(player.current_room.id)
-#             # print("GOTIT",gotit,player.current_room.id)
-#             for i in gotit:
-#                 update_records(i)
-#                 last_direction='x'
 
-#     break
+###################################################
