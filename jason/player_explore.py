@@ -59,7 +59,7 @@ def update_map():
         world_map[last_room][last_data['direction']]=curr_room
         # print("WTTF2",curr_room,world_map[curr_room][reverse_dirs[current_data['direction']]],last_room)
         world_map[curr_room][reverse_dirs[current_data['direction']]]=last_room
-        print("Curr Room",world_map[curr_room],"Last Room", world_map[last_room])
+        # print("Curr Room",world_map[curr_room],"Last Room", world_map[last_room])
 
         #check for current walls
         walls = {'n', 's', 'w', 'e'}-set(exits)
@@ -217,6 +217,15 @@ while True:
         elif curr_cmd[0] in ["fn", "fs", "fe", "fw"]:
             current_action='fly/'
             current_data={"direction":curr_cmd[0][1]}
+        elif curr_cmd[0] == "d":
+            # d n 3 [1,2,3]
+            #{"direction":"n", "num_rooms":"5", "next_room_ids":"10,19,20,63,72"}
+            current_action='dash/'
+            room_list=curr_cmd[3]
+            print("ROOMLIST",room_list)
+            room_list=room_list[1:-1].replace('-',',')
+            print("ROOMLIST",room_list)
+            current_data={"direction":curr_cmd[1], "num_rooms":curr_cmd[2], "next_room_ids":room_list}
         elif curr_cmd[0] == "q":
             break
         elif curr_cmd[0] == "g":
@@ -291,19 +300,19 @@ while True:
 
     # response=requests.post(SERVER+current_move, headers=SET_HEADERS, data=current_data)
     #Next Action
-    if current_action in ['move/','fly/']:
+    if current_action in ['move/','fly/','dash/']:
         # Wise Explorer
         # print("WTF",current_data['direction'],world_map[curr_room][current_data['direction']])
         if current_data['direction']!=None and world_map[curr_room][current_data['direction']] !='?':
             current_data["next_room_id"]=str(world_map[curr_room][current_data['direction']])
             # Fly if poss
-            print("FLY",player['abilities'],rooms[world_map[curr_room][current_data['direction']]]['terrain'])
-            if 'fly' in player['abilities']:
+            # print("FLY",player['abilities'],rooms[world_map[curr_room][current_data['direction']]]['terrain'])
+            if 'fly' in player['abilities'] and current_action !='dash/':
                 if rooms[world_map[curr_room][current_data['direction']]]['terrain']!='CAVE' :
                     current_action='fly/'
             if current_action=='fly/' and rooms[world_map[curr_room][current_data['direction']]]['terrain']=='CAVE':
                 current_action='move/'
-        current_action='fly/'
+        # current_action='fly/'
         # Move 
         try:
             # print("TRYING",current_action,current_data)
@@ -332,10 +341,12 @@ while True:
         with open("room.txt",'w') as file:
             file.write(json.dumps(rooms))
         #Get items automatically if they are in the room.
-        if player['gold']<1000:
+        # if player['gold']<1000:
             if len(items)>0:
-                print("GET IT!")
-                current_action ='auto_get'
+                for i in items:
+                    if 'treasure' not in i:
+                        print("GET IT!")
+                        current_action ='auto_get'
             else:
                 cmds.insert(0,'i')
         if curr_room==1 and len(player['inventory'])>0:
@@ -373,7 +384,7 @@ while True:
         r=response.json()
         cooldown=r['cooldown']
         player=dict(r)
-        print(f"***{player}***")
+        # print(f"***{player}***")
         print("Name:"
         ,r['name']
         ,"\nEncumbrance:"
