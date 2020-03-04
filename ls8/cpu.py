@@ -63,6 +63,9 @@ class CPU:
         try:
             address = 0
             with open(filename) as f:
+                # skip the top line of text that we dont need
+                next(f)
+
                 for line in f:
                     comment_split = line.split("#")
                     num = comment_split[0].strip()
@@ -195,7 +198,7 @@ class CPU:
             operand_b = self.read_ram(self.pc + 2)
             if IR == HLT:
                 print("Exiting program...")
-                sys.exit(1)
+                break
             elif IR in jump:
                 self.branch_table[IR](operand_a, operand_b)
             elif IR in self.branch_table:
@@ -203,3 +206,4 @@ class CPU:
                 self.pc += (IR >> 6) + 1
             else:
                 print(IR)
+        return 
