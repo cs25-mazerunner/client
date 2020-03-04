@@ -8,7 +8,7 @@ import sys
 from util import Stack, Queue
 
 load_dotenv()
-secret_key=os.getenv("KYLE_KEY")
+secret_key=os.getenv("JASON_KEY")
 SET_HEADERS={'Authorization':f'Token {secret_key}'}
 
 LAMBDA_SERVER='https://lambda-treasure-hunt.herokuapp.com/api/adv/'
