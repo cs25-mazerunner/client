@@ -96,7 +96,7 @@ class CPU:
         elif op == "MUL":
             self.registers[reg_a] *= self.registers[reg_b]
         elif op == "AND":
-            self.registers[reg_a] = self.registers[reg_a] and self.registers[reg_b]
+            self.registers[reg_a] = self.registers[reg_a] & self.registers[reg_b]
         elif op == "XOR":
             self.registers[reg_a] = self.registers[reg_a] ^ self.registers[reg_b]
         elif op == "CMP":
