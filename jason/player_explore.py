@@ -240,13 +240,14 @@ while True:
         if current_data['direction']!=None and world_map[curr_room][current_data['direction']] !='?':
             current_data["next_room_id"]=str(world_map[curr_room][current_data['direction']])
             # Fly if poss
-            # print("FLY",player['abilities'],rooms[world_map[curr_room][current_data['direction']]]['terrain'])
-            # if 'fly' in player['abilities']:
-            #     if rooms.get(rooms[world_map[curr_room][current_data['direction']]],None):
-            #         if rooms[world_map[curr_room][current_data['direction']]]['terrain']!='CAVE' :
-            #             current_action='fly/'
+            print("FLY",player['abilities'],rooms[world_map[curr_room][current_data['direction']]]['terrain'])
+            if 'fly' in player['abilities']:
+                if rooms.get(rooms[world_map[curr_room][current_data['direction']]],None):
+                    if [world_map[curr_room][current_data['direction']]]['terrain']!='CAVE' :
+                        current_action='fly/'
             if current_action=='fly/' and rooms[world_map[curr_room][current_data['direction']]]['terrain']=='CAVE':
                 current_action='move/'
+        current_action='fly/'
         # Move 
         try:
             # print("TRYING",current_action,current_data)

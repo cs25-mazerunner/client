@@ -19,12 +19,12 @@ for item in json_map.keys():
     item=int(item)
     rooms[item]=payload
 
-# count=0
-# for x in rooms:
-#     count+=1
-#     if rooms[x]['title'] not in ['A misty room','A Dark Cave','Mt. Holloway']:
-#         print(f"{x} {rooms[x]['title']} - {rooms[x]['description']}")
-# print("COUNT",count)
+count=0
+for x in rooms:
+    count+=1
+    if rooms[x]['title'] not in ['A misty room','A Dark Cave','Mt. Holloway']:
+        print(f"{x} {rooms[x]['title']} - {rooms[x]['description']}")
+print("COUNT",count)
 
 # count=0
 # for x in world_map:
