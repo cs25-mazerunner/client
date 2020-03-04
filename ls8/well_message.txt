@@ -1,0 +1,2 @@
+# add in your well binary to this file and run manually for now
+# you will want to run ls8.py file
