@@ -6,6 +6,8 @@ from requests.exceptions import HTTPError
 import json
 import sys
 from util import Stack, Queue
+import random
+import hashlib
 
 load_dotenv()
 secret_key=os.getenv("JASON_KEY")
@@ -42,6 +44,14 @@ for item in json_map.keys():
 # sys.exit()
 # Create oposites list
 reverse_dirs = {"n": "s", "s": "n", "e": "w", "w": "e", 'x': 'x'}
+
+last_block = {
+    "proof": 2005690142,
+    "difficulty": 6,
+    "cooldown": 1.0,
+    "messages": [],
+    "errors": []
+}
 
 def update_map():
     if last_data['direction']!=None:
@@ -118,6 +128,37 @@ def find_room(target):
                     q.enqueue((world_map[d[1]],new_path ))
                     found.append(d[1])
 
+def valid_proof(last_proof, proof):
+    """
+    Validates the Proof:  Does hash(last_proof, proof) contain 6
+     zeroes?  Return true if the proof is valid
+    :param proof: <int?> The value that when combined with the
+    stringified previous block results in a hash that has the
+    correct number of leading zeroes.
+    :return: True if the resulting hash is a valid proof, False otherwise
+    """
+    guess = f'{last_proof}{proof}'.encode()
+    # print("Guess is: ", guess)
+    guess_hash = hashlib.sha256(guess).hexdigest()
+
+    return guess_hash[:6] == "000000"
+
+def proof_of_work(last_proof):
+    """
+    Simple Proof of Work Algorithm
+    Stringify the block and look for a proof.
+    Loop through possibilities, checking each one against `valid_proof`
+    in an effort to find a number that is a valid proof
+    :return: A valid proof for the provided block
+    """
+    print("Searching for a valid proof...")
+    # block_string = json.dumps(block, sort_keys=True)
+    proof = 0
+    while valid_proof(last_proof, proof) is False:
+        proof = random.randint(1, 10000000000000)
+        # print("PROOF",proof)
+    print("Finished! Valid proof is: ", proof)
+    return proof
 
 #init character
 try:
@@ -220,7 +261,14 @@ while True:
             current_data={}            
         elif curr_cmd[0] == "m":
             current_action='mine/'
-            current_data={"proof": new_proof}            
+            new_proof = proof_of_work(last_block['proof'])
+            current_data={"proof":new_proof}         
+        elif curr_cmd[0] == "r":
+            current_action='recall/'
+            current_data={}            
+        elif curr_cmd[0] == "b":
+            current_action='get_balance/'
+            current_data={}            
         else:
             print("I did not understand that command.")
             current_action=None
@@ -251,9 +299,8 @@ while True:
             # Fly if poss
             print("FLY",player['abilities'],rooms[world_map[curr_room][current_data['direction']]]['terrain'])
             if 'fly' in player['abilities']:
-                if rooms.get(rooms[world_map[curr_room][current_data['direction']]],None):
-                    if [world_map[curr_room][current_data['direction']]]['terrain']!='CAVE' :
-                        current_action='fly/'
+                if rooms[world_map[curr_room][current_data['direction']]]['terrain']!='CAVE' :
+                    current_action='fly/'
             if current_action=='fly/' and rooms[world_map[curr_room][current_data['direction']]]['terrain']=='CAVE':
                 current_action='move/'
         current_action='fly/'
@@ -326,6 +373,7 @@ while True:
         r=response.json()
         cooldown=r['cooldown']
         player=dict(r)
+        print(f"***{player}***")
         print("Name:"
         ,r['name']
         ,"\nEncumbrance:"
@@ -373,8 +421,20 @@ while True:
                 current_action='auto_sell'
             else:
                 current_action='auto_status'
-    # elif current_action==:
     elif current_action=='pray/':
+        try:
+            print("TRYING",current_action,current_data)
+            response=requests.post(SERVER+current_action, headers=SET_HEADERS, json=current_data)
+            response.raise_for_status()
+        except HTTPError as http_err:
+            print(f'HTTP error occurred: {http_err}')
+        except Exception as err:
+            print(f'Other error occurred: {err}')
+        starttime=time.time()
+        r=response.json()
+        cooldown=r['cooldown']
+        print(r['messages'],'\n',r['errors'])
+    elif current_action=='recall/':
         try:
             print("TRYING",current_action,current_data)
             response=requests.post(SERVER+current_action, headers=SET_HEADERS, json=current_data)
@@ -427,6 +487,7 @@ while True:
         # grab the wait time
         cooldown = r['cooldown']
         print(r["messages"], '\n', r['errors'])
+        print(r['description'])
         with open('well_message.txt', 'w') as f:
             f.write(r["description"])
     elif current_action=="get_proof/":
@@ -441,11 +502,14 @@ while True:
         starttime = time.time()
         # make the data JSON
         r = response.json()
+        last_block['proof'] = r['proof']
+        last_block['difficulty'] = r['difficulty']
+        last_block['cooldown'] = r['cooldown']
+        print("Last block: ", last_block)
         # grab the wait time
         cooldown = r['cooldown']
-        print(r["messages"], '\n', r['errors'])
+        # print(r["messages"], '\n', r['errors'])
     elif current_action=='mine/':
-        # make a network req
         try:
             print("Mining...", current_action, current_data)
             response=requests.post('https://lambda-treasure-hunt.herokuapp.com/api/bc/mine/', headers=SET_HEADERS, json=current_data)
@@ -458,8 +522,24 @@ while True:
         starttime = time.time()
         # make the data JSON
         r = response.json()
+        print(r)
         # grab the wait time
         cooldown = r['cooldown']
-        print(r["messages"], '\n', r['errors'])
+        print(r)
+        # print(r["messages"], '\n', r['errors'])
+    elif current_action=='get_balance/':
+        # make a network req
+        try:
+            print("Trying", current_action, current_data)
+            response=requests.get('https://lambda-treasure-hunt.herokuapp.com/api/bc/get_balance/', headers=SET_HEADERS, json=current_data)
+            response.raise_for_status()
+        except HTTPError as http_err:
+            print(f'HTTP error occurred: {http_err}')
+        except Exception as err:
+            print(f'Other error occurred: {err}')
+        starttime = time.time()
+        r = response.json()
+        cooldown = r['cooldown']
+        print(r)
     else:
         print(f"Didn't Move: {current_action}")
