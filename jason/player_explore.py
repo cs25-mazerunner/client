@@ -49,7 +49,7 @@ def update_map():
         world_map[last_room][last_data['direction']]=curr_room
         # print("WTTF2",curr_room,world_map[curr_room][reverse_dirs[current_data['direction']]],last_room)
         world_map[curr_room][reverse_dirs[current_data['direction']]]=last_room
-        print(world_map[curr_room], world_map[last_room])
+        print("Curr Room",world_map[curr_room],"Last Room", world_map[last_room])
 
         #check for current walls
         walls = {'n', 's', 'w', 'e'}-set(exits)
@@ -76,22 +76,18 @@ def find_direction():
         rm=q.dequeue()
         # print("ROOM",rm)
         for d in rm[0].items():
+            # print("FINDER",rm[0],d,rm[1])
             if d[1]=='?':
-                # print("APPEND",rm[1],d[0])
+                # print("FOUNDIT",rm[1],d[0])
                 new_path=list(rm[1])
                 new_path.append(d[0])
                 return new_path
             elif d[1] !='x' and d[1] not in found:
-                if len(rm[1])>0 and d[0]!=reverse_dirs[rm[1][-1]]:
-                    new_path=list(rm[1])
-                    new_path.append(d[0])
-                    q.enqueue((world_map[d[1]],new_path ))
-                    found.append(d[1])
-                else:
-                    new_path=list(rm[1])
-                    new_path.append(d[0])
-                    q.enqueue((world_map[d[1]],new_path ))
-                    found.append(d[1])
+                new_path=list(rm[1])
+                new_path.append(d[0])
+                q.enqueue((world_map[d[1]],new_path ))
+                found.append(d[1])
+    return found
 
 
 def find_room(target):
@@ -153,18 +149,8 @@ cooldown=r['cooldown']
 player=dict(r)
 print(player)
 # pull OS values
-# curr_world_map=response.map
-# curr_roominfo=response.roominfo
-# curr_team_locations=response.teamlocations
-
-print(curr_room,curr_coordinates,exits,cooldown)
 
 #Start walk loop
-# while True:
-# directions_list=[{"direction":"w"},{"direction":"e"},{"direction":"e"},{"direction":"w"}] #,{"direction":"e"},{"direction":"w"}
-#,{"direction":"n"},{"direction":"w"},{"direction":"e"},{"direction":"s"}
-# current_data=directions_list[0]
-# for trials in range(len(directions_list)):
 cmds=[]
 while True:
     if current_action!=None:
@@ -208,9 +194,8 @@ while True:
             current_action='move/'
             cmds=find_direction()
             print("NEW PATH",cmds)
+            sys.exit()
             cmds.append('a')
-            # print("DIRS!",dir)
-            # sys.exit()
             new_dir=cmds.pop(0)
             current_data={"direction":new_dir}
         elif curr_cmd[0] == "p":
@@ -218,7 +203,9 @@ while True:
             current_data={}
         elif curr_cmd[0] == "f":
             current_action='move/'
+            temp=cmds
             cmds=find_room(curr_cmd[1])
+            cmds.extend(temp)
             print(f"NEW PATH to {curr_cmd[1]}",cmds)
             new_dir=cmds.pop(0)
             current_data={"direction":new_dir}
@@ -253,9 +240,11 @@ while True:
         if current_data['direction']!=None and world_map[curr_room][current_data['direction']] !='?':
             current_data["next_room_id"]=str(world_map[curr_room][current_data['direction']])
             # Fly if poss
-            print("FLY",player['abilities'],rooms[world_map[curr_room][current_data['direction']]]['terrain'])
-            if 'fly' in player['abilities'] and rooms[world_map[curr_room][current_data['direction']]]['terrain']!='CAVE' :
-                current_action='fly/'
+            # print("FLY",player['abilities'],rooms[world_map[curr_room][current_data['direction']]]['terrain'])
+            # if 'fly' in player['abilities']:
+            #     if rooms.get(rooms[world_map[curr_room][current_data['direction']]],None):
+            #         if rooms[world_map[curr_room][current_data['direction']]]['terrain']!='CAVE' :
+            #             current_action='fly/'
             if current_action=='fly/' and rooms[world_map[curr_room][current_data['direction']]]['terrain']=='CAVE':
                 current_action='move/'
         # Move 
@@ -365,7 +354,6 @@ while True:
         r=response.json()
         cooldown=r['cooldown']
         print(r['messages'])
-        print("YO",current_data)
         if current_data.get('confirm',None)==None:
             current_action='auto_confirm'
         elif current_data.get('confirm',None)=='yes':
@@ -404,7 +392,6 @@ while True:
         print(r['messages'],'\n',r['errors'])
         time.sleep(cooldown - ((time.time() - starttime) % cooldown))
         current_data["confirm"]="aye"
-        print("DATA",current_data)
         try:
             print("TRYING",current_action,current_data)
             response=requests.post(SERVER+current_action, headers=SET_HEADERS, json=current_data)
