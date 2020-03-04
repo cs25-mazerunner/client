@@ -1,17 +1,20 @@
+import sys
+sys.path.append('../')
+
 import requests
 import time
 from dotenv import load_dotenv
 import os
 from requests.exceptions import HTTPError
 import json
-import sys
 import hashlib
 import random
 from util import Stack, Queue
+from ls8.cpu import CPU
 
 load_dotenv()
 secret_key=os.getenv("KYLE_KEY")
-
+cpu = CPU()
 SET_HEADERS={'Authorization':f'Token {secret_key}'}
 
 LAMBDA_SERVER='https://lambda-treasure-hunt.herokuapp.com/api/adv/'
@@ -464,10 +467,10 @@ while True:
         with open('well_message.txt', 'w') as f:
             f.write(r["description"])
 
-        # # load up the LS8 with the well message
-        # cpu.load("well_message.txt")
-        # # run the LS8 and decode the message
-        # cpu.run()
+        # load up the LS8 with the well message
+        cpu.load("well_message.txt")
+        # run the LS8 and decode the message
+        cpu.run()
     elif current_action=="get_proof/":
         try:
             response=requests.get('https://lambda-treasure-hunt.herokuapp.com/api/bc/last_proof/', headers=SET_HEADERS, json=current_data )
