@@ -303,6 +303,10 @@ while True:
             new_proof = proof_of_work(last_block['proof'])
             current_data={"proof":new_proof}
         
+        elif curr_cmd[0] == "b":
+            current_action='get_balance/'
+            current_data ={}
+
         else:
             print("I did not understand that command.")
             current_action=None
@@ -560,6 +564,24 @@ while True:
         cooldown = r['cooldown']
         print(r["messages"], '\n', r['errors'])
     
+    elif current_action=="get_balance/":
+        try:
+            print("Checking balance...", current_action, current_data)
+            response=requests.get('https://lambda-treasure-hunt.herokuapp.com/api/bc/get_balance/', headers=SET_HEADERS, json=current_data)
+            response.raise_for_status()
+        except HTTPError as http_err:
+            print(f'HTTP error occurred: {http_err}')
+        except Exception as err:
+            print(f'Other error occurred: {err}')
+        # if the req is good start a timer
+        starttime = time.time()
+        # make the data JSON
+        r = response.json()
+        print(r)
+        # grab the wait time
+        cooldown = r['cooldown']
+        print(r["messages"], '\n', r['errors'])
+
     else:
         print(f"Didn't Move: {current_action}")
 
