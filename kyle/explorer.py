@@ -128,8 +128,8 @@ response =requests.get(SERVER+'init/', headers=SET_HEADERS )
 starttime=time.time()
 # pull LS values
 r=response.json()
-# while not r.get('room_id',None):
-#     time.sleep(100)
+while not r.get('room_id',None):
+    time.sleep(30)
 curr_room=r['room_id']
 curr_coordinates=r['coordinates']
 exits=r['exits']
@@ -174,7 +174,7 @@ while True:
         # prompt user for what they want to do.
         if len(cmds)==0:
             cmds = input("-> ").lower().split(",")
-       
+            breakpoint()
         curr_cmd = cmds.pop(0).split(" ")
 
         if curr_cmd[0] in ["n", "s", "e", "w"]:
