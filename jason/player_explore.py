@@ -181,6 +181,9 @@ while True:
         if curr_cmd[0] in ["n", "s", "e", "w"]:
             current_action='move/'
             current_data={"direction":curr_cmd[0]}
+        elif curr_cmd[0] in ["fn", "fs", "fe", "fw"]:
+            current_action='fly/'
+            current_data={"direction":curr_cmd[0][1]}
         elif curr_cmd[0] == "q":
             break
         elif curr_cmd[0] == "g":
@@ -235,11 +238,16 @@ while True:
 
     # response=requests.post(SERVER+current_move, headers=SET_HEADERS, data=current_data)
     #Next Action
-    if current_action=='move/':
+    if current_action in ['move/','fly/']:
         # Wise Explorer
         # print("WTF",current_data['direction'],world_map[curr_room][current_data['direction']])
         if current_data['direction']!=None and world_map[curr_room][current_data['direction']] !='?':
             current_data["next_room_id"]=str(world_map[curr_room][current_data['direction']])
+            # Fly if poss
+            if 'fly' in player['abilities'] and rooms[world_map[curr_room][current_data['direction']]]['terrain']!='CAVE' :
+                current_action='fly/'
+            if current_action=='fly/' and rooms[world_map[curr_room][current_data['direction']]]['terrain']!='CAVE':
+                current_action='move/'
         # Move 
         try:
             # print("TRYING",current_action,current_data)
@@ -331,6 +339,8 @@ while True:
         ,r['errors']
         ,"\nMessages:"
         ,r['messages']
+        ,"\nAbilities:"
+        ,r['abilities']
         )                  
     elif current_action=='sell/':
         try:
