@@ -1,6 +1,3 @@
-#GET THIS FILE WORKING LIKE JASON'S IS WORKING. THEN PUSH MY CODE SO WE'RE WORKING SEPARATELY AGAIN.
-# COPY THE MAP FILE INTO MY MAP FILE TOO
-
 import requests
 import time
 from dotenv import load_dotenv
@@ -22,9 +19,11 @@ SERVER=LAMBDA_SERVER
 player={}
 world_map={}
 important_places={'store':1,'well':55,'fly':22, 'pirate': 467, 'sandofsky': 492, 'transmogrifier': 495}
+
 # for x in range(500):
 #     map[x]={"n": "?", "s": "?", "e": "?", "w": "?"}
-#get current Map
+
+####get current Map
 with open("map_backup.txt",'r') as file:
     map_data=file.read()
     json_map = json.loads(map_data)
@@ -32,7 +31,9 @@ for item in json_map.keys():
     payload=json_map[item]
     item=int(item)
     world_map[item]=payload
-#get current Room Descriptions
+# print("World map: ", world_map)
+
+####get current Room Descriptions
 rooms={}
 with open("room.txt",'r') as file:
     desc_data=file.read()
@@ -41,7 +42,7 @@ for item in json_map.keys():
     payload=json_map[item]
     item=int(item)
     rooms[item]=payload
-# print(world_map)
+
 # sys.exit()
 # Create oposites list
 reverse_dirs = {"n": "s", "s": "n", "e": "w", "w": "e", 'x': 'x'}
@@ -106,7 +107,7 @@ def find_room(target):
         rm=q.dequeue()
         # print("ROOM",rm)
         for d in rm[0].items():
-            print("FIND",rm[0],d[1],type(d[1]),target)
+            # print("FIND",rm[0],d[1],type(d[1]),target)
             if d[1]==int(target):
                 print("FOUND ROOM")
                 new_path=list(rm[1])
@@ -175,6 +176,7 @@ while True:
     if current_action not in ['auto_get','auto_sell','auto_confirm','auto_walk','auto_status']:
         if player['encumbrance']>player['strength']*.75:
             cmds=find_room(1)
+            print(f"NEW PATH to 1",cmds)
         if len(cmds)==0:
             cmds = input("-> ").lower().split(",")
         curr_cmd = cmds.pop(0).split(" ")
@@ -198,8 +200,9 @@ while True:
             print("AUTOWALK")
             current_action='move/'
             cmds=find_direction()
+            print("NEW PATH",cmds)
             print("cmds: ", cmds)
-            # cmds.append('a')
+            cmds.append('a')
             # print("DIRS!",dir)
             # sys.exit()
             new_dir=cmds.pop(0)
@@ -211,6 +214,7 @@ while True:
         elif curr_cmd[0] == "f":
             current_action='move/'
             cmds=find_room(curr_cmd[1])
+            print(f"NEW PATH to {curr_cmd[1]}",cmds)
             print("FOUND",cmds)
             new_dir=cmds.pop(0)
             current_data={"direction":new_dir}
@@ -222,17 +226,17 @@ while True:
         current_data={"name":r['items'][0]}
 
     elif current_action=='auto_sell':
-        if len(player['inventory']) > 0:
-            current_action='sell/'
-            current_data={"name":player['inventory'][0]}
-        else:
-            current_action='move/'
-            cmds=find_direction()
-            cmds.append('a')
-            # print("DIRS!",dir)
-            # sys.exit()
-            new_dir=cmds.pop(0)
-            current_data={"direction":new_dir}
+        # if len(player['inventory']) > 0:
+        current_action='sell/'
+        current_data={"name":player['inventory'][0]}
+        # else:
+        #     current_action='move/'
+        #     cmds=find_direction()
+        #     cmds.append('a')
+        #     # print("DIRS!",dir)
+        #     # sys.exit()
+        #     new_dir=cmds.pop(0)
+        #     current_data={"direction":new_dir}
 
     elif current_action=='auto_confirm':
         current_action='sell/'
@@ -277,12 +281,13 @@ while True:
         with open("room.txt",'w') as file:
             file.write(json.dumps(rooms))
         #Get items automatically if they are in the room. (AVOIDING THS FOR RIGHT NOW)
-        if len(items)>10:
-            print("GET IT!")
-            current_action ='auto_get'
-        else:
-            cmds.insert(0,'a')
-        if curr_room==1:
+        if player['gold']<1000:
+            if len(items)>0:
+                print("GET IT!")
+                current_action ='auto_get'
+            else:
+                cmds.insert(0,'i')
+        if curr_room==1 and len(player['inventory'])>0:
             current_action='auto_sell'
     elif current_action=='take/':
         try:
@@ -298,11 +303,12 @@ while True:
         cooldown=r['cooldown']
         player['inventory'].append(current_data['name'])
         print("Items:",r['items'],"\nMSG:",r['messages'])
-        if len(r['items'])>10:
-            print("GET IT!")
-            current_action ='auto_get'
-        else:
-            cmds.insert(0,'a')
+        if player['gold']<1000:
+            if len(items)>0:
+                print("GET IT!")
+                current_action ='auto_get'
+            else:
+                cmds.insert(0,'i')
     elif current_action=='status/':
         try:
             # print("TRYING",current_action,current_data)
