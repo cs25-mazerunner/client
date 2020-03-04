@@ -5,10 +5,13 @@ import os
 from requests.exceptions import HTTPError
 import json
 import sys
+import hashlib
+import random
 from util import Stack, Queue
 
 load_dotenv()
 secret_key=os.getenv("KYLE_KEY")
+
 SET_HEADERS={'Authorization':f'Token {secret_key}'}
 
 LAMBDA_SERVER='https://lambda-treasure-hunt.herokuapp.com/api/adv/'
@@ -19,6 +22,15 @@ SERVER=LAMBDA_SERVER
 player={}
 world_map={}
 important_places={'store':1,'well':55,'fly':22,'dash':461}
+
+# block for mining
+last_block = {
+    "proof": 2005690142,
+    "difficulty": 6,
+    "cooldown": 1.0,
+    "messages": [],
+    "errors": []
+}
 # for x in range(500):
 #     map[x]={"n": "?", "s": "?", "e": "?", "w": "?"}
 #get current Map
@@ -122,6 +134,37 @@ def find_room(target):
                     q.enqueue((world_map[d[1]],new_path ))
                     found.append(d[1])
 
+def valid_proof(last_proof, proof):
+    """
+    Validates the Proof:  Does hash(last_proof, proof) contain 6
+     zeroes?  Return true if the proof is valid
+    :param proof: <int?> The value that when combined with the
+    stringified previous block results in a hash that has the
+    correct number of leading zeroes.
+    :return: True if the resulting hash is a valid proof, False otherwise
+    """
+    guess = f'{last_proof}{proof}'.encode()
+    print("Guess is: ", guess)
+    guess_hash = hashlib.sha256(guess).hexdigest()
+
+    return guess_hash[:6] == "000000"
+
+def proof_of_work(last_proof):
+    """
+    Simple Proof of Work Algorithm
+    Stringify the block and look for a proof.
+    Loop through possibilities, checking each one against `valid_proof`
+    in an effort to find a number that is a valid proof
+    :return: A valid proof for the provided block
+    """
+    print("Searching for a valid proof...")
+    # block_string = json.dumps(block, sort_keys=True)
+    proof = 0
+    while valid_proof(last_proof, proof) is False:
+        proof = random.randint(1, 10000000000000)
+        print(proof)
+    print("Finished! Valid proof is: ", proof)
+    return proof
 
 #init character
 response =requests.get(SERVER+'init/', headers=SET_HEADERS )
@@ -204,6 +247,9 @@ while True:
             # sys.exit()
             new_dir=cmds.pop(0)
             current_data={"direction":new_dir}
+        elif curr_cmd[0] == "pr":
+            current_action='get_proof/'
+            current_data={}
         elif curr_cmd[0] == "p":
             current_action='pray/'
             current_data={}
@@ -219,6 +265,10 @@ while True:
         elif curr_cmd[0] == "ex":
             current_action = 'examine/'
             current_data={"name": curr_cmd[1]}
+        elif curr_cmd[0] == "m":
+            current_action='mine/'
+            new_proof = proof_of_work(last_block['proof'])
+            current_data={"proof":new_proof}
         else:
             print("I did not understand that command.")
             current_action=None
@@ -413,7 +463,46 @@ while True:
         print(r["messages"], '\n', r['errors'])
         with open('well_message.txt', 'w') as f:
             f.write(r["description"])
-        
-        
+
+        # # load up the LS8 with the well message
+        # cpu.load("well_message.txt")
+        # # run the LS8 and decode the message
+        # cpu.run()
+    elif current_action=="get_proof/":
+        try:
+            response=requests.get('https://lambda-treasure-hunt.herokuapp.com/api/bc/last_proof/', headers=SET_HEADERS, json=current_data )
+            response.raise_for_status()
+        except HTTPError as http_err:
+            print(f'HTTP error occurred: {http_err}')
+        except Exception as err:
+            print(f'Other error occurred: {err}')
+        # if the req is good start a timer
+        starttime = time.time()
+        # make the data JSON
+        r = response.json()
+        last_block['proof'] = r['proof']
+        last_block['difficulty'] = r['difficulty']
+        last_block['cooldown'] = r['cooldown']
+        print("Last block: ", last_block)
+        # grab the wait time
+        cooldown = r['cooldown']
+        # print(r["messages"], '\n', r['errors'])
+    elif current_action=='mine/':
+        try:
+            print("Mining...", current_action, current_data)
+            response=requests.post('https://lambda-treasure-hunt.herokuapp.com/api/bc/mine/', headers=SET_HEADERS, json=current_data)
+            response.raise_for_status()
+        except HTTPError as http_err:
+            print(f'HTTP error occurred: {http_err}')
+        except Exception as err:
+            print(f'Other error occurred: {err}')
+        # if the req is good start a timer
+        starttime = time.time()
+        # make the data JSON
+        r = response.json()
+        print(r)
+        # grab the wait time
+        cooldown = r['cooldown']
+        print(r["messages"], '\n', r['errors'])
     else:
         print(f"Didn't Move: {current_action}")
