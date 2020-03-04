@@ -218,6 +218,14 @@ while True:
             print("FOUND",cmds)
             new_dir=cmds.pop(0)
             current_data={"direction":new_dir}
+        elif curr_cmd[0] == "ex":
+            current_action="examine/"
+            current_data={"name": ' '.join(curr_cmd[1:])}
+            print("Trying to examine...", current_action, current_data)
+            print()
+        elif curr_cmd[0] == "c":
+            current_action='change_name/'
+            current_data={"name":curr_cmd[1]}
         else:
             print("I did not understand that command.")
             current_action=None
@@ -379,6 +387,45 @@ while True:
         r=response.json()
         cooldown=r['cooldown']
         print(r['messages'],'\n',r['errors'])
+    elif current_action=='change_name/':
+        try:
+            print("TRYING",current_action,current_data)
+            response=requests.post(SERVER+current_action, headers=SET_HEADERS, json=current_data)
+            response.raise_for_status()
+        except HTTPError as http_err:
+            print(f'HTTP error occurred: {http_err}')
+        except Exception as err:
+            print(f'Other error occurred: {err}')
+        starttime=time.time()
+        r=response.json()
+        cooldown=r['cooldown']
+        print(r['messages'],'\n',r['errors'])
+        time.sleep(cooldown - ((time.time() - starttime) % cooldown))
+        current_data["confirm"]="aye"
+        print("DATA",current_data)
+        try:
+            print("TRYING",current_action,current_data)
+            response=requests.post(SERVER+current_action, headers=SET_HEADERS, json=current_data)
+            response.raise_for_status()
+        except HTTPError as http_err:
+            print(f'HTTP error occurred: {http_err}')
+        except Exception as err:
+            print(f'Other error occurred: {err}')
+    elif current_action=='examine/':
+        try:
+            print("Trying to examine...", current_action, current_data)
+            response=requests.post(SERVER+current_action, headers=SET_HEADERS, json=current_data)
+            response.raise_for_status()
+        except HTTPError as http_err:
+            print(f'HTTP error occurred: {http_err}')
+        except Exception as err:
+            print(f'Other error occurred: {err}')
+        starttime=time.time()
+        r=response.json()
+        cooldown=r['cooldown']
+        print(r['messages'],'\n',r['errors'])
+        time.sleep(cooldown - ((time.time() - starttime) % cooldown))
+        print("DATA",current_data)
     else:
         print(f"Didn't Move: {current_action}")
 # print("world_map",world_map[0],world_map[1])
