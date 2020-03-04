@@ -124,12 +124,18 @@ def find_room(target):
 
 
 #init character
-response =requests.get(SERVER+'init/', headers=SET_HEADERS )
+try:
+    response =requests.get(SERVER+'init/', headers=SET_HEADERS )
+    response.raise_for_status()
+except HTTPError as http_err:
+    print(f'HTTP error occurred: {http_err}')
+except Exception as err:
+    print(f'Other error occurred: {err}')
 starttime=time.time()
 # pull LS values
 r=response.json()
-while not r.get('room_id',None):
-    time.sleep(100)
+# while not r.get('room_id',None):
+#     time.sleep(100)
 curr_room=r['room_id']
 curr_coordinates=r['coordinates']
 exits=r['exits']
@@ -231,6 +237,9 @@ while True:
     elif current_action=='auto_confirm':
         current_action='sell/'
         current_data={"name":player['inventory'][0],"confirm":"yes"}
+    elif current_action=='auto_status':
+        current_action='status/'
+        current_data={}
     else:
         print("I did not understand that command.")
         current_action=None
@@ -244,9 +253,10 @@ while True:
         if current_data['direction']!=None and world_map[curr_room][current_data['direction']] !='?':
             current_data["next_room_id"]=str(world_map[curr_room][current_data['direction']])
             # Fly if poss
+            print("FLY",player['abilities'],rooms[world_map[curr_room][current_data['direction']]]['terrain'])
             if 'fly' in player['abilities'] and rooms[world_map[curr_room][current_data['direction']]]['terrain']!='CAVE' :
                 current_action='fly/'
-            if current_action=='fly/' and rooms[world_map[curr_room][current_data['direction']]]['terrain']!='CAVE':
+            if current_action=='fly/' and rooms[world_map[curr_room][current_data['direction']]]['terrain']=='CAVE':
                 current_action='move/'
         # Move 
         try:
@@ -363,6 +373,8 @@ while True:
                 player['inventory'].pop(0)
             if len(player['inventory'])>0:
                 current_action='auto_sell'
+            else:
+                current_action='auto_status'
     # elif current_action==:
     elif current_action=='pray/':
         try:
