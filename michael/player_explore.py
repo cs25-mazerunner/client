@@ -126,6 +126,16 @@ def find_room(target):
                     q.enqueue((world_map[d[1]],new_path ))
                     found.append(d[1])
 
+last_block = {
+    "proof": 122972216,
+    "difficulty": 6,
+    "cooldown": 1.0,
+    "messages": [],
+    "errors": []
+}
+
+# def mine():
+
 
 #init character
 response =requests.get(SERVER+'init/', headers=SET_HEADERS )
@@ -162,6 +172,7 @@ print(curr_room,curr_coordinates,exits,cooldown)
 # current_data=directions_list[0]
 # for trials in range(len(directions_list)):
 cmds=[]
+new_proof = ''
 while True:
     if current_action!=None:
         time.sleep(cooldown - ((time.time() - starttime) % cooldown))
@@ -196,6 +207,9 @@ while True:
             current_data={"name":player['inventory'][0]}
             if curr_cmd[0]=="y":
                 current_data['confirm']='yes'
+        elif curr_cmd[0] == "pr":
+            current_action='get_proof/'
+            current_data={}
         elif curr_cmd[0] == "a":
             print("AUTOWALK")
             current_action='move/'
@@ -221,11 +235,12 @@ while True:
         elif curr_cmd[0] == "ex":
             current_action="examine/"
             current_data={"name": ' '.join(curr_cmd[1:])}
-            print("Trying to examine...", current_action, current_data)
-            print()
         elif curr_cmd[0] == "c":
             current_action='change_name/'
             current_data={"name":curr_cmd[1]}
+        elif curr_cmd[0] == "m":
+            current_action='mine/'
+            current_data={"proof": new_proof}
         else:
             print("I did not understand that command.")
             current_action=None
@@ -412,6 +427,7 @@ while True:
         except Exception as err:
             print(f'Other error occurred: {err}')
     elif current_action=='examine/':
+        # make a network req
         try:
             print("Trying to examine...", current_action, current_data)
             response=requests.post(SERVER+current_action, headers=SET_HEADERS, json=current_data)
@@ -420,12 +436,47 @@ while True:
             print(f'HTTP error occurred: {http_err}')
         except Exception as err:
             print(f'Other error occurred: {err}')
-        starttime=time.time()
-        r=response.json()
-        cooldown=r['cooldown']
-        print(r['messages'],'\n',r['errors'])
-        time.sleep(cooldown - ((time.time() - starttime) % cooldown))
-        print("DATA",current_data)
+        # if the req is good start a timer
+        starttime = time.time()
+        # make the data JSON
+        r = response.json()
+        # grab the wait time
+        cooldown = r['cooldown']
+        print(r["messages"], '\n', r['errors'])
+        with open('well_message.txt', 'w') as f:
+            f.write(r["description"])
+    elif current_action=="get_proof/":
+        try:
+            response=requests.get('https://lambda-treasure-hunt.herokuapp.com/api/bc/last_proof/', headers=SET_HEADERS, json=current_data )
+            response.raise_for_status()
+        except HTTPError as http_err:
+            print(f'HTTP error occurred: {http_err}')
+        except Exception as err:
+            print(f'Other error occurred: {err}')
+        # if the req is good start a timer
+        starttime = time.time()
+        # make the data JSON
+        r = response.json()
+        # grab the wait time
+        cooldown = r['cooldown']
+        print(r["messages"], '\n', r['errors'])
+    elif current_action=='mine/':
+        # make a network req
+        try:
+            print("Mining...", current_action, current_data)
+            response=requests.post('https://lambda-treasure-hunt.herokuapp.com/api/bc/mine/', headers=SET_HEADERS, json=current_data)
+            response.raise_for_status()
+        except HTTPError as http_err:
+            print(f'HTTP error occurred: {http_err}')
+        except Exception as err:
+            print(f'Other error occurred: {err}')
+        # if the req is good start a timer
+        starttime = time.time()
+        # make the data JSON
+        r = response.json()
+        # grab the wait time
+        cooldown = r['cooldown']
+        print(r["messages"], '\n', r['errors'])
     else:
         print(f"Didn't Move: {current_action}")
 # print("world_map",world_map[0],world_map[1])
