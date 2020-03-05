@@ -124,6 +124,13 @@ def find_direction():
     found=[]
     q=Queue()
     q.enqueue((world_map[curr_room],[]))
+    if curr_room<500:
+        q.enqueue((world_map[curr_room+500],['warp']))
+        q.enqueue((world_map[0],['r']))
+    else:
+        q.enqueue((world_map[curr_room-500],['warp']))
+        # q.enqueue((world_map[500],['r']))
+
     while q.size()>0:
         rm=q.dequeue()
         # print("ROOM",rm)
