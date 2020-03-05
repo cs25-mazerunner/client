@@ -422,10 +422,10 @@ while True:
             file.write(json.dumps(rooms))
         #Get items automatically if they are in the room.
         # if player['gold']<1000:
-            if len(items)>0:
-                print("GET IT!")
-                current_action ='auto_get'
-                cmds.insert(0,'i')
+            # if len(items)>0:
+            #     print("GET IT!")
+            #     current_action ='auto_get'
+            #     cmds.insert(0,'i')
         if curr_room==1 and len(player['inventory'])>0:
             current_action='auto_sell'
     elif current_action=='take/':
