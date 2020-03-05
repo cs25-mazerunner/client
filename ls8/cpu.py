@@ -50,7 +50,7 @@ class CPU:
         self.branch_table[CALL] = self.call
         self.branch_table[RET] = self.ret
         self.branch_table[PRA] = self.pra
-
+        self.save=""
     def load(self, filename):
         """Load a program into memory."""
 
@@ -59,28 +59,33 @@ class CPU:
         # For now, we've just hardcoded a program:
 
         program = []
-
-        try:
-            address = 0
-            with open(filename) as f:
+        filename=filename.split("\n")
+        for line in filename:
+            # print(line,line[0])
+            if line!="" and line[0]!='Y':     
+                value = int(line, 2)
+                program.append(value)
+        # try:
+        #     address = 0
+            # with open(filename) as f:
                 # skip the top line of text that we dont need
-                next(f)
+                # next(f)
 
-                for line in f:
-                    comment_split = line.split("#")
-                    num = comment_split[0].strip()
+                # for line in f:
+                    # comment_split = line.split("#")
+                    # num = comment_split[0].strip()
 
                     # Check if the current line is a blank line
-                    if num == "":
-                        continue
+                    # if num == "":
+                    #     continue
 
-                    value = int(num, 2)
+                    # value = int(num, 2)
 
-                    program.append(value)
+                    # program.append(value)
 
-        except FileNotFoundError:
-            print(f"{sys.argv[0]}: {filename} Not Found")
-            sys.exit(1)
+        # except FileNotFoundError:
+        #     print(f"{sys.argv[0]}: {filename} Not Found")
+        #     sys.exit(1)
 
         for instruction in program:
             self.ram[address] = instruction
@@ -153,10 +158,10 @@ class CPU:
 
     def prn(self, a=None, b=None):
         print(self.registers[a])
-
+        # self.save+=f"{self.registers[a]}N"
     def pra(self, a=None, b=None):
         print(chr(self.registers[a]))
-
+        self.save+=f"{chr(self.registers[a])}"
     def add(self, a=None, b=None):
         self.alu("ADD", a, b)
 
@@ -188,7 +193,6 @@ class CPU:
 
     def run(self):
         """Run The CPU"""
-
         # a dict to check for jump instructions
         jump = [CALL, JNE, RET, JMP, JEQ]
 
@@ -197,6 +201,7 @@ class CPU:
             operand_a = self.read_ram(self.pc + 1)
             operand_b = self.read_ram(self.pc + 2)
             if IR == HLT:
+                return self.save[-3:]
                 print("Exiting program...")
                 break
             elif IR in jump:

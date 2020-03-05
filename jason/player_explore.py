@@ -11,7 +11,6 @@ import random
 import hashlib
 from ls8.cpu import CPU
 
-cpu = CPU()
 load_dotenv()
 secret_key=os.getenv("JASON_KEY")
 SET_HEADERS={'Authorization':f'Token {secret_key}'}
@@ -22,12 +21,12 @@ SERVER=LAMBDA_SERVER
 
 #Current map supplied by server
 player={}
-world_map={}
 important_places={'store':1,'well':55,'fly':22,'dash':461,'trans':495}
-for x in range(1000):
-    world_map[x]={"n": "?", "s": "?", "e": "?", "w": "?"}
-with open("map.txt",'w') as file:
-    file.write(json.dumps(world_map))
+world_map={}
+# for x in range(1000):
+#     world_map[x]={"n": "?", "s": "?", "e": "?", "w": "?"}
+# with open("map.txt",'w') as file:
+#     file.write(json.dumps(world_map))
 # get current Map
 with open("map.txt",'r') as file:
     map_data=file.read()
@@ -88,34 +87,43 @@ def refine(path):
         # print("OLD PATH",path)
         new_path=[]
         last_dir=None
-        last_rm=None
         curr_rm=curr_room
         for x in range(len(path)):
             curr_dir=path[x]
-            nxt_rm=world_map[curr_rm][curr_dir]
-            # print("REFINE",x,curr_rm,curr_dir,nxt_rm)
-            if last_dir==curr_dir:
-                if new_path[-1][0]=='d':
-                    #add to dash
-                    old_dash=new_path[-1].split(" ")
-                    # print("SPLIT DASH",old_dash)
-                    temp=int(old_dash[2])
-                    temp+=1
-                    old_dash[2]=str(temp)
-                    old_dash[3]=f'{old_dash[3][:-1]}-{nxt_rm}]'
-                    old_dash=" ".join(old_dash)
-                    # print("JOIN DASH",old_dash)
-                    new_path[-1]=old_dash
+            if curr_dir not in ['warp','r']:
+                nxt_rm=world_map[curr_rm][curr_dir]
+                # print("REFINE",x,curr_rm,curr_dir,nxt_rm)
+                if last_dir==curr_dir:
+                    if new_path[-1][0]=='d':
+                        #add to dash
+                        old_dash=new_path[-1].split(" ")
+                        # print("SPLIT DASH",old_dash)
+                        temp=int(old_dash[2])
+                        temp+=1
+                        old_dash[2]=str(temp)
+                        old_dash[3]=f'{old_dash[3][:-1]}-{nxt_rm}]'
+                        old_dash=" ".join(old_dash)
+                        # print("JOIN DASH",old_dash)
+                        new_path[-1]=old_dash
+                    else:
+                        #install dash
+                        # d n 3 [1-2-3]
+                        new_path[-1]=f'd {curr_dir} 2 [{curr_rm}-{nxt_rm}]'
                 else:
-                    #install dash
-                    # d n 3 [1-2-3]
-                    new_path[-1]=f'd {curr_dir} 2 [{curr_rm}-{nxt_rm}]'
+                    new_path.append(curr_dir)
+                print(x,new_path)
+                last_dir=curr_dir
+                curr_rm=nxt_rm
             else:
                 new_path.append(curr_dir)
-            # print(x,new_path)
-            last_dir=curr_dir
-            last_rm=curr_rm
-            curr_rm=nxt_rm
+                last_dir=curr_dir
+                if curr_dir=='r':
+                    curr_rm=0
+                else:
+                    if curr_rm<500:
+                        curr_rm+=500
+                    else:
+                        curr_rm-=500
     else:
         new_path=list(path)
     return new_path
@@ -143,11 +151,22 @@ def find_direction():
 
 
 def find_room(target):
-    found=[]
+    found=set()
     q=Queue()    
     # print("PROBLEM",r,curr_room)
-    q.enqueue((world_map[curr_room],[]))
-    found.append(world_map[curr_room])
+    q.enqueue((world_map[curr_room],[],curr_room))
+    if curr_room<500:
+        warp_room=curr_room+500
+        q.enqueue((world_map[warp_room],['warp'],warp_room))
+        found.add(warp_room)
+        q.enqueue((world_map[0],['r'],0))
+    else:
+        warp_room=curr_room-500
+        q.enqueue((world_map[warp_room],['warp'],warp_room))
+        found.add(warp_room)
+        q.enqueue((world_map[0],['r'],0))
+    found.add(curr_room)
+    found.add(0)
     while q.size()>0:
         rm=q.dequeue()
         # print("ROOM",rm)
@@ -158,24 +177,37 @@ def find_room(target):
                 new_path=list(rm[1])
                 new_path.append(d[0])
                 if 'dash' in player['abilities']:
+                    print("PRE REFINE",new_path)
                     new_path=refine(new_path)
                 # print(new_path)
                 # sys.exit()
                 return new_path
             elif d[1] not in ['x','?'] and d[1] not in found:
                 # print(rm)
-                if len(rm[1])>0 and d[0]!=reverse_dirs[rm[1][-1]]:
+                if  len(rm[1])>0 and rm[1][-1] not in ['warp','r'] and d[0]!=reverse_dirs[rm[1][-1]]:
                     new_path=list(rm[1])
                     new_path.append(d[0])
                     # print("ADDING",world_map[d[1]],new_path)
-                    q.enqueue((world_map[d[1]],new_path ))
-                    found.append(d[1])
+                    q.enqueue((world_map[d[1]],new_path,rm[2]))
+                    found.add(d[1])
                 else:
                     new_path=list(rm[1])
                     new_path.append(d[0])
                     # print("ADDING",world_map[d[1]],new_path)
-                    q.enqueue((world_map[d[1]],new_path ))
-                    found.append(d[1])
+                    q.enqueue((world_map[d[1]],new_path,rm[2]))
+                    found.add(d[1])
+        if len(rm[1])>0 and rm[1][-1]!='warp':
+            warp_path=list(rm[1])
+            warp_path.append('warp')
+            if rm[2]<500:
+                warp_room=rm[2]+500
+                q.enqueue((world_map[warp_room],warp_path,warp_room))
+                found.add(warp_room)
+            else:
+                warp_room=rm[2]-500
+                q.enqueue((world_map[warp_room],warp_path,warp_room))
+                found.add(warp_room)
+
 
 def valid_proof(last_proof, proof):
     """
@@ -308,10 +340,11 @@ while True:
             current_data={"name":player['inventory'][int(curr_cmd[1])]}
         elif curr_cmd[0] == "f":
             current_action='stay/'
+            temp=cmds
             cmds=find_room(curr_cmd[1])
+            cmds.extend(temp)
             # print(cmds)
             # sys.exit()
-            # cmds=refine(cmds)
             print(f"NEW PATH to {curr_cmd[1]}",cmds)
             # new_dir=cmds.pop(0)
             # current_data={"direction":new_dir}
@@ -381,7 +414,8 @@ while True:
     if current_action in ['move/','fly/','dash/']:
         # Wise Explorer
         # print("WISE",current_data['direction'],world_map[curr_room][current_data['direction']])
-        if current_data['direction']!=None and world_map[curr_room][current_data['direction']] !='?':
+
+        if current_action!='dash/' and current_data['direction']!=None and world_map[curr_room][current_data['direction']] !='?':
             current_data["next_room_id"]=str(world_map[curr_room][current_data['direction']])
             # Fly if poss
             # print("FLY",player['abilities'],rooms[world_map[curr_room][current_data['direction']]]['terrain'])
@@ -394,7 +428,7 @@ while True:
             current_action='fly/'
         # Move 
         try:
-            # print("TRYING",current_action,current_data)
+            print("TRYING",current_action,current_data)
             response=requests.post(SERVER+current_action, headers=SET_HEADERS, json=current_data)
             response.raise_for_status()
         except HTTPError as http_err:
@@ -415,17 +449,18 @@ while True:
         players=r['players']
         print("ROOM",curr_room,curr_coordinates,"EXIT",exits,"COOL",cooldown)
         print("TITLE",r['title'],"\nDESC",r['description'],"\nItems:",r['items'],"\nERR:",r['errors'],"\nMSG:",r['messages'],r['players'],'\n\n')
-        update_map()#map,curr_room,last_room,current_data,last_data
-        with open("map.txt",'w') as file:
-            file.write(json.dumps(world_map))
+        # update_map()#map,curr_room,last_room,current_data,last_data
+        # with open("map.txt",'w') as file:
+        #     file.write(json.dumps(world_map))
         with open("room.txt",'w') as file:
             file.write(json.dumps(rooms))
         #Get items automatically if they are in the room.
         # if player['gold']<1000:
-            # if len(items)>0:
-            #     print("GET IT!")
-            #     current_action ='auto_get'
-            #     cmds.insert(0,'i')
+            if len(items)>0:
+                print("GET IT!")
+                if 'golden snitch' in items:
+                    current_action ='auto_get'
+                    cmds.insert(0,'i')
         if curr_room==1 and len(player['inventory'])>0:
             current_action='auto_sell'
     elif current_action=='take/':
@@ -658,14 +693,16 @@ while True:
         # grab the wait time
         cooldown = r['cooldown']
         print(r["messages"], '\n', r['errors'])
-        print(r['description'])
+        # print(r['description'])
 
-        with open('well_message.txt', 'w') as f:
-            f.write(r["description"])
-        # load up the LS8 with the well message
-        cpu.load("well_message.txt")
-        # run the LS8 and decode the message
-        cpu.run()
+        # with open('well_message.txt', 'w') as f:
+        #     f.write(r["description"])
+        cpu = CPU()
+        cpu.load(r["description"])
+        save=cpu.run()
+        cpu = None
+        print("SAVE",save)
+        cmds.extend([f'f {save}','f 555','ex well'])
     elif current_action=="get_proof/":
         # real_proof=0
         # while True:
