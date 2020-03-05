@@ -23,10 +23,12 @@ SERVER=LAMBDA_SERVER
 #Current map supplied by server
 player={}
 world_map={}
-important_places={'store':1,'well':55,'fly':22,'dash':461}
-# for x in range(500):
-#     map[x]={"n": "?", "s": "?", "e": "?", "w": "?"}
-#get current Map
+important_places={'store':1,'well':55,'fly':22,'dash':461,'trans':495}
+for x in range(1000):
+    world_map[x]={"n": "?", "s": "?", "e": "?", "w": "?"}
+with open("map.txt",'w') as file:
+    file.write(json.dumps(world_map))
+# get current Map
 with open("map.txt",'r') as file:
     map_data=file.read()
     json_map = json.loads(map_data)
@@ -102,7 +104,7 @@ def refine(path):
                     old_dash[2]=str(temp)
                     old_dash[3]=f'{old_dash[3][:-1]}-{nxt_rm}]'
                     old_dash=" ".join(old_dash)
-                    print("JOIN DASH",old_dash)
+                    # print("JOIN DASH",old_dash)
                     new_path[-1]=old_dash
                 else:
                     #install dash
@@ -110,7 +112,7 @@ def refine(path):
                     new_path[-1]=f'd {curr_dir} 2 [{curr_rm}-{nxt_rm}]'
             else:
                 new_path.append(curr_dir)
-            print(x,new_path)
+            # print(x,new_path)
             last_dir=curr_dir
             last_rm=curr_rm
             curr_rm=nxt_rm
@@ -143,7 +145,7 @@ def find_direction():
 def find_room(target):
     found=[]
     q=Queue()    
-    print("PROBLEM",r,curr_room)
+    # print("PROBLEM",r,curr_room)
     q.enqueue((world_map[curr_room],[]))
     found.append(world_map[curr_room])
     while q.size()>0:
@@ -202,7 +204,7 @@ def proof_of_work(last_proof):
     # block_string = json.dumps(block, sort_keys=True)
     proof = 0
     while valid_proof(last_proof, proof) is False:
-        proof = random.randint(1, 10000000000000)
+        proof = random.randint(900000000, 1500000000)
         # print("PROOF",proof)
     print("Finished! Valid proof is: ", proof)
     return proof
@@ -244,10 +246,10 @@ while True:
     if current_action!=None:
         time.sleep(cooldown - ((time.time() - starttime) % cooldown)) 
     # Action IMPUT
-    if current_action not in ['auto_get','auto_sell','auto_confirm','auto_walk','auto_status']:
-        if player['encumbrance']>player['strength']*.69:
-            cmds=find_room(1)
-            print(f"NEW PATH to 1",cmds)
+    if current_action not in ['auto_get','auto_sell','auto_confirm','auto_walk','auto_status','auto_mine']:
+        # if player['encumbrance']>player['strength']*.69:
+        #     cmds=find_room(1)
+        #     print(f"NEW PATH to 1",cmds)
         if len(cmds)==0:
             cmds = input("-> ").lower().split(",")
         curr_cmd = cmds.pop(0).split(" ")
@@ -264,7 +266,7 @@ while True:
         elif curr_cmd[0] == "d":
             # d n 3 [1-2-3]
             #{"direction":"n", "num_rooms":"5", "next_room_ids":"10,19,20,63,72"}
-            if curr_cmd[2]!=2:
+            if curr_cmd[2]!='2':
                 current_action='dash/'
                 room_list=curr_cmd[3]
                 # print("ROOMLIST",room_list)
@@ -301,6 +303,9 @@ while True:
         elif curr_cmd[0] == "p":
             current_action='pray/'
             current_data={}
+        elif curr_cmd[0] == "t":
+            current_action='transmogrify/'
+            current_data={"name":player['inventory'][int(curr_cmd[1])]}
         elif curr_cmd[0] == "f":
             current_action='stay/'
             cmds=find_room(curr_cmd[1])
@@ -328,7 +333,25 @@ while True:
             current_data={}            
         elif curr_cmd[0] == "b":
             current_action='get_balance/'
-            current_data={}            
+            current_data={}
+        elif curr_cmd[0] == "+":
+            current_action='carry/'
+            current_data={"name":player['inventory'][int(curr_cmd[1])]}      
+        elif curr_cmd[0] == "-":
+            current_action='receive/'
+            current_data={}
+        elif curr_cmd[0] == "wear":
+            current_action='wear/'
+            current_data={"name":player['inventory'][int(curr_cmd[1])]}      
+        elif curr_cmd[0] == "warp":
+            current_action='warp/'
+            current_data={}      
+        elif curr_cmd[0] == "remove":
+            current_action='undress/'
+            if curr_cmd[1]=='b':
+                current_data={"name":player['bodywear']}         
+            else:
+                current_data={"name":player['footwear']}   
         else:
             print("I did not understand that command.")
             current_action=None
@@ -342,9 +365,12 @@ while True:
         current_action='sell/'
         current_data={"name":player['inventory'][0],"confirm":"yes"}
     elif current_action=='auto_status':
-        print("Auto Status")
         current_action='status/'
         current_data={}
+    elif current_action=='auto_mine':
+        current_action='mine/'
+        new_proof = proof_of_work(last_block['proof'])
+        current_data={"proof":new_proof} 
     else:
         print("I did not understand that command.")
         current_action=None
@@ -389,9 +415,9 @@ while True:
         players=r['players']
         print("ROOM",curr_room,curr_coordinates,"EXIT",exits,"COOL",cooldown)
         print("TITLE",r['title'],"\nDESC",r['description'],"\nItems:",r['items'],"\nERR:",r['errors'],"\nMSG:",r['messages'],r['players'],'\n\n')
-        # update_map()#map,curr_room,last_room,current_data,last_data
-        # with open("map.txt",'w') as file:
-        #     file.write(json.dumps(world_map))
+        update_map()#map,curr_room,last_room,current_data,last_data
+        with open("map.txt",'w') as file:
+            file.write(json.dumps(world_map))
         with open("room.txt",'w') as file:
             file.write(json.dumps(rooms))
         #Get items automatically if they are in the room.
@@ -496,6 +522,84 @@ while True:
         r=response.json()
         cooldown=r['cooldown']
         print(r['messages'],'\n',r['errors'])
+    elif current_action=='warp/':
+        try:
+            print("TRYING",current_action,current_data)
+            response=requests.post(SERVER+current_action, headers=SET_HEADERS, json=current_data)
+            response.raise_for_status()
+        except HTTPError as http_err:
+            print(f'HTTP error occurred: {http_err}')
+        except Exception as err:
+            print(f'Other error occurred: {err}')
+        starttime=time.time()
+        r=response.json()
+        cooldown=r['cooldown']
+        print(r['messages'],'\n',r['errors'])
+    elif current_action=='wear/':
+        try:
+            print("TRYING",current_action,current_data)
+            response=requests.post(SERVER+current_action, headers=SET_HEADERS, json=current_data)
+            response.raise_for_status()
+        except HTTPError as http_err:
+            print(f'HTTP error occurred: {http_err}')
+        except Exception as err:
+            print(f'Other error occurred: {err}')
+        starttime=time.time()
+        r=response.json()
+        cooldown=r['cooldown']
+        print(r['messages'],'\n',r['errors'])
+    elif current_action=='undress/':
+        try:
+            print("TRYING",current_action,current_data)
+            response=requests.post(SERVER+current_action, headers=SET_HEADERS, json=current_data)
+            response.raise_for_status()
+        except HTTPError as http_err:
+            print(f'HTTP error occurred: {http_err}')
+        except Exception as err:
+            print(f'Other error occurred: {err}')
+        starttime=time.time()
+        r=response.json()
+        cooldown=r['cooldown']
+        print(r['messages'],'\n',r['errors'])
+    elif current_action=='carry/':
+        try:
+            print("TRYING",current_action,current_data)
+            response=requests.post(SERVER+current_action, headers=SET_HEADERS, json=current_data)
+            response.raise_for_status()
+        except HTTPError as http_err:
+            print(f'HTTP error occurred: {http_err}')
+        except Exception as err:
+            print(f'Other error occurred: {err}')
+        starttime=time.time()
+        r=response.json()
+        cooldown=r['cooldown']
+        print(r['messages'],'\n',r['errors'])
+    elif current_action=='receive/':
+        try:
+            print("TRYING",current_action,current_data)
+            response=requests.post(SERVER+current_action, headers=SET_HEADERS, json=current_data)
+            response.raise_for_status()
+        except HTTPError as http_err:
+            print(f'HTTP error occurred: {http_err}')
+        except Exception as err:
+            print(f'Other error occurred: {err}')
+        starttime=time.time()
+        r=response.json()
+        cooldown=r['cooldown']
+        print(r['messages'],'\n',r['errors'])
+    elif current_action=='transmogrify/':
+        try:
+            print("TRYING",current_action,current_data)
+            response=requests.post(SERVER+current_action, headers=SET_HEADERS, json=current_data)
+            response.raise_for_status()
+        except HTTPError as http_err:
+            print(f'HTTP error occurred: {http_err}')
+        except Exception as err:
+            print(f'Other error occurred: {err}')
+        starttime=time.time()
+        r=response.json()
+        cooldown=r['cooldown']
+        print(r['messages'],'\n',r['errors'])
     elif current_action=='recall/':
         try:
             print("TRYING",current_action,current_data)
@@ -563,24 +667,36 @@ while True:
         # run the LS8 and decode the message
         cpu.run()
     elif current_action=="get_proof/":
-        try:
-            response=requests.get('https://lambda-treasure-hunt.herokuapp.com/api/bc/last_proof/', headers=SET_HEADERS, json=current_data )
-            response.raise_for_status()
-        except HTTPError as http_err:
-            print(f'HTTP error occurred: {http_err}')
-        except Exception as err:
-            print(f'Other error occurred: {err}')
-        # if the req is good start a timer
-        starttime = time.time()
-        # make the data JSON
-        r = response.json()
-        last_block['proof'] = r['proof']
-        last_block['difficulty'] = r['difficulty']
-        last_block['cooldown'] = r['cooldown']
-        print("Last block: ", last_block)
-        # grab the wait time
-        cooldown = r['cooldown']
-        # print(r["messages"], '\n', r['errors'])
+        # real_proof=0
+        # while True:
+            try:
+                response=requests.get('https://lambda-treasure-hunt.herokuapp.com/api/bc/last_proof/', headers=SET_HEADERS, json=current_data )
+                response.raise_for_status()
+            except HTTPError as http_err:
+                print(f'HTTP error occurred: {http_err}')
+            except Exception as err:
+                print(f'Other error occurred: {err}')
+            # if the req is good start a timer
+            starttime = time.time()
+            # make the data JSON
+            r = response.json()
+            # print("ASSHOLE",r)
+            last_block['proof'] = r['proof']
+            last_block['difficulty'] = r['difficulty']
+            last_block['cooldown'] = r['cooldown']
+            print("Last block: ", last_block)
+            # if real_proof==0:
+            #     real_proof=r['proof']
+            # elif real_proof==r['proof']:
+            #     continue
+            # else:
+            #     break
+            # grab the wait time
+            cooldown = r['cooldown']
+            # print(r["messages"], '\n', r['errors'])
+        #     time.sleep(cooldown - ((time.time() - starttime) % cooldown))
+        # current_action='auto_mine'
+        
     elif current_action=='mine/':
         try:
             print("Mining...", current_action, current_data)
