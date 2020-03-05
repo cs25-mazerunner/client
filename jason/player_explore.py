@@ -88,34 +88,42 @@ def refine(path):
         # print("OLD PATH",path)
         new_path=[]
         last_dir=None
-        last_rm=None
         curr_rm=curr_room
         for x in range(len(path)):
             curr_dir=path[x]
-            nxt_rm=world_map[curr_rm][curr_dir]
-            # print("REFINE",x,curr_rm,curr_dir,nxt_rm)
-            if last_dir==curr_dir:
-                if new_path[-1][0]=='d':
-                    #add to dash
-                    old_dash=new_path[-1].split(" ")
-                    # print("SPLIT DASH",old_dash)
-                    temp=int(old_dash[2])
-                    temp+=1
-                    old_dash[2]=str(temp)
-                    old_dash[3]=f'{old_dash[3][:-1]}-{nxt_rm}]'
-                    old_dash=" ".join(old_dash)
-                    # print("JOIN DASH",old_dash)
-                    new_path[-1]=old_dash
+            if curr_dir not in ['warp','r']:
+                nxt_rm=world_map[curr_rm][curr_dir]
+                # print("REFINE",x,curr_rm,curr_dir,nxt_rm)
+                if last_dir==curr_dir:
+                    if new_path[-1][0]=='d':
+                        #add to dash
+                        old_dash=new_path[-1].split(" ")
+                        # print("SPLIT DASH",old_dash)
+                        temp=int(old_dash[2])
+                        temp+=1
+                        old_dash[2]=str(temp)
+                        old_dash[3]=f'{old_dash[3][:-1]}-{nxt_rm}]'
+                        old_dash=" ".join(old_dash)
+                        # print("JOIN DASH",old_dash)
+                        new_path[-1]=old_dash
+                    else:
+                        #install dash
+                        # d n 3 [1-2-3]
+                        new_path[-1]=f'd {curr_dir} 2 [{curr_rm}-{nxt_rm}]'
                 else:
-                    #install dash
-                    # d n 3 [1-2-3]
-                    new_path[-1]=f'd {curr_dir} 2 [{curr_rm}-{nxt_rm}]'
+                    new_path.append(curr_dir)
+                print(x,new_path)
+                last_dir=curr_dir
+                curr_rm=nxt_rm
             else:
-                new_path.append(curr_dir)
-            # print(x,new_path)
-            last_dir=curr_dir
-            last_rm=curr_rm
-            curr_rm=nxt_rm
+                last_dir=curr_dir
+                if curr_dir=='r':
+                    curr_rm=0
+                else:
+                    if curr_rm<500:
+                        curr_rm+=500
+                    else:
+                        curr_rm-=500
     else:
         new_path=list(path)
     return new_path
@@ -124,13 +132,6 @@ def find_direction():
     found=[]
     q=Queue()
     q.enqueue((world_map[curr_room],[]))
-    if curr_room<500:
-        q.enqueue((world_map[curr_room+500],['warp']))
-        q.enqueue((world_map[0],['r']))
-    else:
-        q.enqueue((world_map[curr_room-500],['warp']))
-        # q.enqueue((world_map[500],['r']))
-
     while q.size()>0:
         rm=q.dequeue()
         # print("ROOM",rm)
@@ -150,14 +151,25 @@ def find_direction():
 
 
 def find_room(target):
-    found=[]
+    found=set()
     q=Queue()    
     # print("PROBLEM",r,curr_room)
-    q.enqueue((world_map[curr_room],[]))
-    found.append(world_map[curr_room])
+    q.enqueue((world_map[curr_room],[],curr_room))
+    if curr_room<500:
+        warp_room=curr_room+500
+        q.enqueue((world_map[warp_room],['warp'],warp_room))
+        found.add(warp_room)
+        q.enqueue((world_map[0],['r'],0))
+    else:
+        warp_room=curr_room-500
+        q.enqueue((world_map[warp_room],['warp'],warp_room))
+        found.add(warp_room)
+        q.enqueue((world_map[0],['r'],0))
+    found.add(curr_room)
+    found.add(0)
     while q.size()>0:
         rm=q.dequeue()
-        # print("ROOM",rm)
+        print("ROOM",rm)
         for d in rm[0].items():
             # print("FIND",rm[0],d[1],type(d[1]),target)
             if d[1]==int(target):
@@ -171,18 +183,30 @@ def find_room(target):
                 return new_path
             elif d[1] not in ['x','?'] and d[1] not in found:
                 # print(rm)
-                if len(rm[1])>0 and d[0]!=reverse_dirs[rm[1][-1]]:
+                if  len(rm[1])>0 and rm[1][-1] not in ['warp','r'] and d[0]!=reverse_dirs[rm[1][-1]]:
                     new_path=list(rm[1])
                     new_path.append(d[0])
                     # print("ADDING",world_map[d[1]],new_path)
-                    q.enqueue((world_map[d[1]],new_path ))
-                    found.append(d[1])
+                    q.enqueue((world_map[d[1]],new_path,rm[2]))
+                    found.add(d[1])
                 else:
                     new_path=list(rm[1])
                     new_path.append(d[0])
                     # print("ADDING",world_map[d[1]],new_path)
-                    q.enqueue((world_map[d[1]],new_path ))
-                    found.append(d[1])
+                    q.enqueue((world_map[d[1]],new_path,rm[2]))
+                    found.add(d[1])
+        if len(rm[1])>0 and rm[1][-1]!='warp':
+            warp_path=list(rm[1])
+            warp_path.append('warp')
+            if rm[2]<500:
+                warp_room=rm[2]+500
+                q.enqueue((world_map[warp_room],warp_path,warp_room))
+                found.add(warp_room)
+            else:
+                warp_room=rm[2]-500
+                q.enqueue((world_map[warp_room],warp_path,warp_room))
+                found.add(warp_room)
+
 
 def valid_proof(last_proof, proof):
     """
@@ -422,9 +446,9 @@ while True:
         players=r['players']
         print("ROOM",curr_room,curr_coordinates,"EXIT",exits,"COOL",cooldown)
         print("TITLE",r['title'],"\nDESC",r['description'],"\nItems:",r['items'],"\nERR:",r['errors'],"\nMSG:",r['messages'],r['players'],'\n\n')
-        update_map()#map,curr_room,last_room,current_data,last_data
-        with open("map.txt",'w') as file:
-            file.write(json.dumps(world_map))
+        # update_map()#map,curr_room,last_room,current_data,last_data
+        # with open("map.txt",'w') as file:
+        #     file.write(json.dumps(world_map))
         with open("room.txt",'w') as file:
             file.write(json.dumps(rooms))
         #Get items automatically if they are in the room.
