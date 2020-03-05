@@ -111,7 +111,7 @@ def refine(path):
                         new_path[-1]=f'd {curr_dir} 2 [{curr_rm}-{nxt_rm}]'
                 else:
                     new_path.append(curr_dir)
-                print(x,new_path)
+                # print(x,new_path)
                 last_dir=curr_dir
                 curr_rm=nxt_rm
             else:
@@ -177,7 +177,7 @@ def find_room(target):
                 new_path=list(rm[1])
                 new_path.append(d[0])
                 if 'dash' in player['abilities']:
-                    print("PRE REFINE",new_path)
+                    # print("PRE REFINE",new_path)
                     new_path=refine(new_path)
                 # print(new_path)
                 # sys.exit()
@@ -258,6 +258,7 @@ curr_room=r['room_id']
 curr_coordinates=r['coordinates']
 exits=r['exits']
 cooldown=r['cooldown']
+items=r['items']
 print("ROOM",curr_room,curr_coordinates,"EXIT",exits,"COOL",cooldown)
 print("TITLE",r['title'],"\nDESC",r['description'],"\nItems:",r['items'],"\nERR:",r['errors'],"\nMSG:",r['messages'],'\n\n')
 time.sleep(cooldown - ((time.time() - starttime) % cooldown))
@@ -274,6 +275,7 @@ print(player)
 
 #Start walk loop
 cmds=[]
+
 while True:
     if current_action!=None:
         time.sleep(cooldown - ((time.time() - starttime) % cooldown)) 
@@ -291,10 +293,6 @@ while True:
         elif curr_cmd[0] in ["fn", "fs", "fe", "fw"]:
             current_action='fly/'
             current_data={"direction":curr_cmd[0][1]}
-        elif curr_cmd[0] == "z":
-            paff=['w','w','s','e','e']
-            paff=refine(paff)
-            print(paff)
         elif curr_cmd[0] == "d":
             # d n 3 [1-2-3]
             #{"direction":"n", "num_rooms":"5", "next_room_ids":"10,19,20,63,72"}
@@ -313,7 +311,7 @@ while True:
             break
         elif curr_cmd[0] == "g":
             current_action='take/'
-            current_data={"name":r['items'][0]}
+            current_data={"name":items[0]}
         elif curr_cmd[0] == "x":
             current_action='init/'
             current_data={}
@@ -390,7 +388,11 @@ while True:
             current_action=None
     elif current_action=='auto_get':
         current_action='take/'
-        current_data={"name":r['items'][0]}
+        if 'golden snitch' in items:
+            current_data={"name":"golden snitch"}
+        else:
+            current_data={"name":items[0]}
+
     elif current_action=='auto_sell':
         current_action='sell/'
         current_data={"name":player['inventory'][0]}
@@ -435,7 +437,7 @@ while True:
             print(f'HTTP error occurred: {http_err}')
         except Exception as err:
             print(f'Other error occurred: {err}')
-
+        # print("MOVE R",r)
         starttime=time.time()
         last_room=curr_room
         last_action=current_action
@@ -457,15 +459,15 @@ while True:
         #Get items automatically if they are in the room.
         # if player['gold']<1000:
             if len(items)>0:
-                print("GET IT!")
                 if 'golden snitch' in items:
+                    print("GET IT!")
                     current_action ='auto_get'
-                    cmds.insert(0,'i')
+                # cmds=['g','x']
         if curr_room==1 and len(player['inventory'])>0:
             current_action='auto_sell'
     elif current_action=='take/':
         try:
-            # print("TRYING",current_action,current_data)
+            print("TRYING",current_action,current_data)
             response=requests.post(SERVER+current_action, headers=SET_HEADERS, json=current_data)
             response.raise_for_status()
         except HTTPError as http_err:
@@ -474,18 +476,19 @@ while True:
             print(f'Other error occurred: {err}')
         starttime=time.time()
         r=response.json()
+        print("TAKE R",r)
         cooldown=r['cooldown']
         player['inventory'].append(current_data['name'])
         print("Items:",r['items'],"\nMSG:",r['messages'])
-        if player['gold']<1000:
-            if len(items)>0:
-                print("GET IT!")
-                current_action ='auto_get'
-            else:
-                cmds.insert(0,'i')
+        # if player['gold']<1000:
+        if len(r['items'])>0 and curr_room<500:
+            print("TAKE IT!")
+            current_action ='auto_get'
+        else:
+            cmds.insert(0,'i')
     elif current_action=='status/':
         try:
-            # print("TRYING",current_action,current_data)
+            print("TRYING",current_action,current_data)
             response=requests.post(SERVER+current_action, headers=SET_HEADERS, json=current_data)
             response.raise_for_status()
         except HTTPError as http_err:
@@ -637,7 +640,7 @@ while True:
         print(r['messages'],'\n',r['errors'])
     elif current_action=='recall/':
         try:
-            print("TRYING",current_action,current_data)
+            # print("TRYING",current_action,current_data)
             response=requests.post(SERVER+current_action, headers=SET_HEADERS, json=current_data)
             response.raise_for_status()
         except HTTPError as http_err:
@@ -697,12 +700,19 @@ while True:
 
         # with open('well_message.txt', 'w') as f:
         #     f.write(r["description"])
-        cpu = CPU()
-        cpu.load(r["description"])
-        save=cpu.run()
-        cpu = None
-        print("SAVE",save)
-        cmds.extend([f'f {save}','f 555','ex well'])
+        if current_data['name']=="well":
+            cpu = CPU()
+            cpu.load(r["description"])
+            save=cpu.run()
+            cpu = None
+            # print("SAVE",save)
+            if int(save)<500:
+                cmds.extend([f'f {save}','pr','m','f 55','ex well'])
+            else:
+                cmds.extend([f'f {save}','f 555','ex well'])
+        else:
+            print(r['description'])
+            
     elif current_action=="get_proof/":
         # real_proof=0
         # while True:
@@ -782,6 +792,7 @@ while True:
         curr_coordinates=r['coordinates']
         exits=r['exits']
         cooldown=r['cooldown']
+        items=r['items']
         print("ROOM",curr_room,curr_coordinates,"EXIT",exits,"COOL",cooldown)
         print("TITLE",r['title'],"\nDESC",r['description'],"\nItems:",r['items'],"\nERR:",r['errors'],"\nMSG:",r['messages'],'\n\n')        
     elif current_action=='stay/':
