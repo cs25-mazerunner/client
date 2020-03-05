@@ -11,7 +11,6 @@ import random
 import hashlib
 from ls8.cpu import CPU
 
-cpu = CPU()
 load_dotenv()
 secret_key=os.getenv("JASON_KEY")
 SET_HEADERS={'Authorization':f'Token {secret_key}'}
@@ -341,10 +340,11 @@ while True:
             current_data={"name":player['inventory'][int(curr_cmd[1])]}
         elif curr_cmd[0] == "f":
             current_action='stay/'
+            temp=cmds
             cmds=find_room(curr_cmd[1])
+            cmds.extend(temp)
             # print(cmds)
             # sys.exit()
-            # cmds=refine(cmds)
             print(f"NEW PATH to {curr_cmd[1]}",cmds)
             # new_dir=cmds.pop(0)
             # current_data={"direction":new_dir}
@@ -693,14 +693,16 @@ while True:
         # grab the wait time
         cooldown = r['cooldown']
         print(r["messages"], '\n', r['errors'])
-        print(r['description'])
+        # print(r['description'])
 
-        with open('well_message.txt', 'w') as f:
-            f.write(r["description"])
-        # load up the LS8 with the well message
-        cpu.load("well_message.txt")
-        # run the LS8 and decode the message
-        cpu.run()
+        # with open('well_message.txt', 'w') as f:
+        #     f.write(r["description"])
+        cpu = CPU()
+        cpu.load(r["description"])
+        save=cpu.run()
+        cpu = None
+        print("SAVE",save)
+        cmds.extend([f'f {save}','f 555','ex well'])
     elif current_action=="get_proof/":
         # real_proof=0
         # while True:
