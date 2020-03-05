@@ -412,7 +412,8 @@ while True:
     if current_action in ['move/','fly/','dash/']:
         # Wise Explorer
         # print("WISE",current_data['direction'],world_map[curr_room][current_data['direction']])
-        if current_data['direction']!=None and world_map[curr_room][current_data['direction']] !='?':
+
+        if current_action!='dash/' and current_data['direction']!=None and world_map[curr_room][current_data['direction']] !='?':
             current_data["next_room_id"]=str(world_map[curr_room][current_data['direction']])
             # Fly if poss
             # print("FLY",player['abilities'],rooms[world_map[curr_room][current_data['direction']]]['terrain'])
@@ -425,7 +426,7 @@ while True:
             current_action='fly/'
         # Move 
         try:
-            # print("TRYING",current_action,current_data)
+            print("TRYING",current_action,current_data)
             response=requests.post(SERVER+current_action, headers=SET_HEADERS, json=current_data)
             response.raise_for_status()
         except HTTPError as http_err:
