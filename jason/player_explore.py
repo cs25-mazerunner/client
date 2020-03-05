@@ -116,6 +116,7 @@ def refine(path):
                 last_dir=curr_dir
                 curr_rm=nxt_rm
             else:
+                new_path.append(curr_dir)
                 last_dir=curr_dir
                 if curr_dir=='r':
                     curr_rm=0
@@ -169,7 +170,7 @@ def find_room(target):
     found.add(0)
     while q.size()>0:
         rm=q.dequeue()
-        print("ROOM",rm)
+        # print("ROOM",rm)
         for d in rm[0].items():
             # print("FIND",rm[0],d[1],type(d[1]),target)
             if d[1]==int(target):
@@ -177,6 +178,7 @@ def find_room(target):
                 new_path=list(rm[1])
                 new_path.append(d[0])
                 if 'dash' in player['abilities']:
+                    print("PRE REFINE",new_path)
                     new_path=refine(new_path)
                 # print(new_path)
                 # sys.exit()
