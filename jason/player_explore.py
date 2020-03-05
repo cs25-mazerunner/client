@@ -22,12 +22,12 @@ SERVER=LAMBDA_SERVER
 
 #Current map supplied by server
 player={}
-world_map={}
 important_places={'store':1,'well':55,'fly':22,'dash':461,'trans':495}
-for x in range(1000):
-    world_map[x]={"n": "?", "s": "?", "e": "?", "w": "?"}
-with open("map.txt",'w') as file:
-    file.write(json.dumps(world_map))
+world_map={}
+# for x in range(1000):
+#     world_map[x]={"n": "?", "s": "?", "e": "?", "w": "?"}
+# with open("map.txt",'w') as file:
+#     file.write(json.dumps(world_map))
 # get current Map
 with open("map.txt",'r') as file:
     map_data=file.read()
@@ -422,10 +422,11 @@ while True:
             file.write(json.dumps(rooms))
         #Get items automatically if they are in the room.
         # if player['gold']<1000:
-            # if len(items)>0:
-            #     print("GET IT!")
-            #     current_action ='auto_get'
-            #     cmds.insert(0,'i')
+            if len(items)>0:
+                print("GET IT!")
+                if 'golden snitch' in items:
+                    current_action ='auto_get'
+                    cmds.insert(0,'i')
         if curr_room==1 and len(player['inventory'])>0:
             current_action='auto_sell'
     elif current_action=='take/':
