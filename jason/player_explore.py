@@ -239,13 +239,7 @@ print(player)
 cmds=[]
 while True:
     if current_action!=None:
-        time.sleep(cooldown - ((time.time() - starttime) % cooldown))
-    # print(f"Wake {time.time()-starttime}")
-
-    #Choose next action
-
-    #Choose next action data
-    # current_data=directions_list[trials]  
+        time.sleep(cooldown - ((time.time() - starttime) % cooldown)) 
 
     # Action IMPUT
     if current_action not in ['auto_get','auto_sell','auto_confirm','auto_walk','auto_status']:
@@ -261,7 +255,7 @@ while True:
         elif curr_cmd[0] in ["fn", "fs", "fe", "fw"]:
             current_action='fly/'
             current_data={"direction":curr_cmd[0][1]}
-        elif curr_cmd[0] == "r":
+        elif curr_cmd[0] == "z":
             paff=['w','w','s','e','e']
             paff=refine(paff)
             print(paff)
@@ -505,7 +499,12 @@ while True:
             print(f'Other error occurred: {err}')
         starttime=time.time()
         r=response.json()
+        curr_room=r['room_id']
+        curr_coordinates=r['coordinates']
+        exits=r['exits']
         cooldown=r['cooldown']
+        items=r['items']
+        players=r['players']
         print(r['messages'],'\n',r['errors'])
     elif current_action=='change_name/':
         try:
