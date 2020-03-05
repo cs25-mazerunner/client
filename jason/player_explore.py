@@ -114,6 +114,8 @@ def refine(path):
             last_dir=curr_dir
             last_rm=curr_rm
             curr_rm=nxt_rm
+    else:
+        new_path=list(path)
     return new_path
 
 def find_direction():
@@ -141,6 +143,7 @@ def find_direction():
 def find_room(target):
     found=[]
     q=Queue()    
+    print("PROBLEM",r,curr_room)
     q.enqueue((world_map[curr_room],[]))
     found.append(world_map[curr_room])
     while q.size()>0:
@@ -240,7 +243,6 @@ cmds=[]
 while True:
     if current_action!=None:
         time.sleep(cooldown - ((time.time() - starttime) % cooldown)) 
-
     # Action IMPUT
     if current_action not in ['auto_get','auto_sell','auto_confirm','auto_walk','auto_status']:
         if player['encumbrance']>player['strength']*.69:
@@ -262,17 +264,25 @@ while True:
         elif curr_cmd[0] == "d":
             # d n 3 [1-2-3]
             #{"direction":"n", "num_rooms":"5", "next_room_ids":"10,19,20,63,72"}
-            current_action='dash/'
-            room_list=curr_cmd[3]
-            # print("ROOMLIST",room_list)
-            room_list=room_list[1:-1].replace('-',',')
-            # print("ROOMLIST",room_list)
-            current_data={"direction":curr_cmd[1], "num_rooms":curr_cmd[2], "next_room_ids":room_list}
+            if curr_cmd[2]!=2:
+                current_action='dash/'
+                room_list=curr_cmd[3]
+                # print("ROOMLIST",room_list)
+                room_list=room_list[1:-1].replace('-',',')
+                # print("ROOMLIST",room_list)
+                current_data={"direction":curr_cmd[1], "num_rooms":curr_cmd[2], "next_room_ids":room_list}
+            else:
+                current_action='move/'
+                current_data={"direction":curr_cmd[1]}
+                cmds.insert(0,curr_cmd[1])      
         elif curr_cmd[0] == "q":
             break
         elif curr_cmd[0] == "g":
             current_action='take/'
             current_data={"name":r['items'][0]}
+        elif curr_cmd[0] == "x":
+            current_action='init/'
+            current_data={}
         elif curr_cmd[0] == "i":
             current_action='status/'
             current_data={}
@@ -332,6 +342,7 @@ while True:
         current_action='sell/'
         current_data={"name":player['inventory'][0],"confirm":"yes"}
     elif current_action=='auto_status':
+        print("Auto Status")
         current_action='status/'
         current_data={}
     else:
@@ -378,19 +389,16 @@ while True:
         players=r['players']
         print("ROOM",curr_room,curr_coordinates,"EXIT",exits,"COOL",cooldown)
         print("TITLE",r['title'],"\nDESC",r['description'],"\nItems:",r['items'],"\nERR:",r['errors'],"\nMSG:",r['messages'],r['players'],'\n\n')
-        update_map()#map,curr_room,last_room,current_data,last_data
-        with open("map.txt",'w') as file:
-            file.write(json.dumps(world_map))
+        # update_map()#map,curr_room,last_room,current_data,last_data
+        # with open("map.txt",'w') as file:
+        #     file.write(json.dumps(world_map))
         with open("room.txt",'w') as file:
             file.write(json.dumps(rooms))
         #Get items automatically if they are in the room.
         # if player['gold']<1000:
             if len(items)>0:
-                for i in items:
-                    if 'treasure' not in i:
-                        print("GET IT!")
-                        current_action ='auto_get'
-            else:
+                print("GET IT!")
+                current_action ='auto_get'
                 cmds.insert(0,'i')
         if curr_room==1 and len(player['inventory'])>0:
             current_action='auto_sell'
@@ -589,7 +597,6 @@ while True:
         print(r)
         # grab the wait time
         cooldown = r['cooldown']
-        print(r)
         # print(r["messages"], '\n', r['errors'])
     elif current_action=='get_balance/':
         # make a network req
@@ -605,6 +612,25 @@ while True:
         r = response.json()
         cooldown = r['cooldown']
         print(r)
+    elif current_action=='init/':
+        try:
+            response =requests.get(SERVER+'init/', headers=SET_HEADERS )
+            response.raise_for_status()
+        except HTTPError as http_err:
+            print(f'HTTP error occurred: {http_err}')
+        except Exception as err:
+            print(f'Other error occurred: {err}')
+        starttime=time.time()
+        # pull LS values
+        r=response.json()
+        # while not r.get('room_id',None):
+        #     time.sleep(100)
+        curr_room=r['room_id']
+        curr_coordinates=r['coordinates']
+        exits=r['exits']
+        cooldown=r['cooldown']
+        print("ROOM",curr_room,curr_coordinates,"EXIT",exits,"COOL",cooldown)
+        print("TITLE",r['title'],"\nDESC",r['description'],"\nItems:",r['items'],"\nERR:",r['errors'],"\nMSG:",r['messages'],'\n\n')        
     elif current_action=='stay/':
         pass
     else:
