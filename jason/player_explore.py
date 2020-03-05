@@ -5,10 +5,13 @@ import os
 from requests.exceptions import HTTPError
 import json
 import sys
+sys.path.append('../')
 from util import Stack, Queue
 import random
 import hashlib
+from ls8.cpu import CPU
 
+cpu = CPU()
 load_dotenv()
 secret_key=os.getenv("JASON_KEY")
 SET_HEADERS={'Authorization':f'Token {secret_key}'}
@@ -59,7 +62,7 @@ def update_map():
         world_map[last_room][last_data['direction']]=curr_room
         # print("WTTF2",curr_room,world_map[curr_room][reverse_dirs[current_data['direction']]],last_room)
         world_map[curr_room][reverse_dirs[current_data['direction']]]=last_room
-        # print("Curr Room",world_map[curr_room],"Last Room", world_map[last_room])
+        print("Curr Room",world_map[curr_room],"Last Room", world_map[last_room])
 
         #check for current walls
         walls = {'n', 's', 'w', 'e'}-set(exits)
@@ -77,6 +80,41 @@ def update_map():
         "messages": r['messages'],
         }   
     return world_map
+
+def refine(path):
+    if len(path)>1:
+        # print("OLD PATH",path)
+        new_path=[]
+        last_dir=None
+        last_rm=None
+        curr_rm=curr_room
+        for x in range(len(path)):
+            curr_dir=path[x]
+            nxt_rm=world_map[curr_rm][curr_dir]
+            # print("REFINE",x,curr_rm,curr_dir,nxt_rm)
+            if last_dir==curr_dir:
+                if new_path[-1][0]=='d':
+                    #add to dash
+                    old_dash=new_path[-1].split(" ")
+                    # print("SPLIT DASH",old_dash)
+                    temp=int(old_dash[2])
+                    temp+=1
+                    old_dash[2]=str(temp)
+                    old_dash[3]=f'{old_dash[3][:-1]}-{nxt_rm}]'
+                    old_dash=" ".join(old_dash)
+                    print("JOIN DASH",old_dash)
+                    new_path[-1]=old_dash
+                else:
+                    #install dash
+                    # d n 3 [1-2-3]
+                    new_path[-1]=f'd {curr_dir} 2 [{curr_rm}-{nxt_rm}]'
+            else:
+                new_path.append(curr_dir)
+            print(x,new_path)
+            last_dir=curr_dir
+            last_rm=curr_rm
+            curr_rm=nxt_rm
+    return new_path
 
 def find_direction():
     found=[]
@@ -114,17 +152,23 @@ def find_room(target):
                 # print("FOUND ROOM")
                 new_path=list(rm[1])
                 new_path.append(d[0])
+                if 'dash' in player['abilities']:
+                    new_path=refine(new_path)
+                # print(new_path)
+                # sys.exit()
                 return new_path
             elif d[1] not in ['x','?'] and d[1] not in found:
                 # print(rm)
                 if len(rm[1])>0 and d[0]!=reverse_dirs[rm[1][-1]]:
                     new_path=list(rm[1])
                     new_path.append(d[0])
+                    # print("ADDING",world_map[d[1]],new_path)
                     q.enqueue((world_map[d[1]],new_path ))
                     found.append(d[1])
                 else:
                     new_path=list(rm[1])
                     new_path.append(d[0])
+                    # print("ADDING",world_map[d[1]],new_path)
                     q.enqueue((world_map[d[1]],new_path ))
                     found.append(d[1])
 
@@ -217,14 +261,18 @@ while True:
         elif curr_cmd[0] in ["fn", "fs", "fe", "fw"]:
             current_action='fly/'
             current_data={"direction":curr_cmd[0][1]}
+        elif curr_cmd[0] == "r":
+            paff=['w','w','s','e','e']
+            paff=refine(paff)
+            print(paff)
         elif curr_cmd[0] == "d":
-            # d n 3 [1,2,3]
+            # d n 3 [1-2-3]
             #{"direction":"n", "num_rooms":"5", "next_room_ids":"10,19,20,63,72"}
             current_action='dash/'
             room_list=curr_cmd[3]
-            print("ROOMLIST",room_list)
+            # print("ROOMLIST",room_list)
             room_list=room_list[1:-1].replace('-',',')
-            print("ROOMLIST",room_list)
+            # print("ROOMLIST",room_list)
             current_data={"direction":curr_cmd[1], "num_rooms":curr_cmd[2], "next_room_ids":room_list}
         elif curr_cmd[0] == "q":
             break
@@ -243,8 +291,6 @@ while True:
             print("AUTOWALK")
             current_action='move/'
             cmds=find_direction()
-            print("NEW PATH",cmds)
-            sys.exit()
             cmds.append('a')
             new_dir=cmds.pop(0)
             current_data={"direction":new_dir}
@@ -252,13 +298,14 @@ while True:
             current_action='pray/'
             current_data={}
         elif curr_cmd[0] == "f":
-            current_action='move/'
-            temp=cmds
+            current_action='stay/'
             cmds=find_room(curr_cmd[1])
-            cmds.extend(temp)
+            # print(cmds)
+            # sys.exit()
+            # cmds=refine(cmds)
             print(f"NEW PATH to {curr_cmd[1]}",cmds)
-            new_dir=cmds.pop(0)
-            current_data={"direction":new_dir}
+            # new_dir=cmds.pop(0)
+            # current_data={"direction":new_dir}
         elif curr_cmd[0] == "c":
             current_action='change_name/'
             current_data={"name":curr_cmd[1]}
@@ -302,17 +349,18 @@ while True:
     #Next Action
     if current_action in ['move/','fly/','dash/']:
         # Wise Explorer
-        # print("WTF",current_data['direction'],world_map[curr_room][current_data['direction']])
+        # print("WISE",current_data['direction'],world_map[curr_room][current_data['direction']])
         if current_data['direction']!=None and world_map[curr_room][current_data['direction']] !='?':
             current_data["next_room_id"]=str(world_map[curr_room][current_data['direction']])
             # Fly if poss
             # print("FLY",player['abilities'],rooms[world_map[curr_room][current_data['direction']]]['terrain'])
-            if 'fly' in player['abilities'] and current_action !='dash/':
-                if rooms[world_map[curr_room][current_data['direction']]]['terrain']!='CAVE' :
-                    current_action='fly/'
-            if current_action=='fly/' and rooms[world_map[curr_room][current_data['direction']]]['terrain']=='CAVE':
-                current_action='move/'
-        # current_action='fly/'
+            # if 'fly' in player['abilities'] and current_action !='dash/':
+            #     if rooms[world_map[curr_room][current_data['direction']]]['terrain']!='CAVE' :
+            #         current_action='fly/'
+            # if current_action=='fly/' and rooms[world_map[curr_room][current_data['direction']]]['terrain']=='CAVE':
+            #     current_action='move/'
+        if current_action!='dash/':
+            current_action='fly/'
         # Move 
         try:
             # print("TRYING",current_action,current_data)
@@ -333,8 +381,9 @@ while True:
         exits=r['exits']
         cooldown=r['cooldown']
         items=r['items']
+        players=r['players']
         print("ROOM",curr_room,curr_coordinates,"EXIT",exits,"COOL",cooldown)
-        print("TITLE",r['title'],"\nDESC",r['description'],"\nItems:",r['items'],"\nERR:",r['errors'],"\nMSG:",r['messages'],'\n\n')
+        print("TITLE",r['title'],"\nDESC",r['description'],"\nItems:",r['items'],"\nERR:",r['errors'],"\nMSG:",r['messages'],r['players'],'\n\n')
         update_map()#map,curr_room,last_room,current_data,last_data
         with open("map.txt",'w') as file:
             file.write(json.dumps(world_map))
@@ -499,8 +548,13 @@ while True:
         cooldown = r['cooldown']
         print(r["messages"], '\n', r['errors'])
         print(r['description'])
+
         with open('well_message.txt', 'w') as f:
             f.write(r["description"])
+        # load up the LS8 with the well message
+        cpu.load("well_message.txt")
+        # run the LS8 and decode the message
+        cpu.run()
     elif current_action=="get_proof/":
         try:
             response=requests.get('https://lambda-treasure-hunt.herokuapp.com/api/bc/last_proof/', headers=SET_HEADERS, json=current_data )
@@ -552,5 +606,7 @@ while True:
         r = response.json()
         cooldown = r['cooldown']
         print(r)
+    elif current_action=='stay/':
+        pass
     else:
         print(f"Didn't Move: {current_action}")
