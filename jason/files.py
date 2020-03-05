@@ -22,7 +22,7 @@ for item in json_map.keys():
 count=0
 for x in rooms:
     count+=1
-    if rooms[x]['title'] not in ['A misty room','A Dark Cave','Mt. Holloway']:
+    if rooms[x]['title'] not in ['A misty room','A Dark Cave','Mt. Holloway','Darkness']:
         print(f"{x} {rooms[x]['title']} - {rooms[x]['description']}")
 print("COUNT",count)
 
@@ -33,10 +33,16 @@ print("COUNT",count)
 #             count+=1
 # print(count)
 
-missing=''
-count=0
-for x in range(500):
-    if not rooms.get(x,None):
-        missing+=f'f {x},'
-        count+=1
-print(count,missing)
+# missing=''
+# count=0
+# for x in range(500):
+#     if not rooms.get(x,None):
+#         missing+=f'f {x},'
+#         count+=1
+# print(count,missing)
+
+# for x in rooms:
+#     count+=1
+#     if rooms[x]['items']!=[]:
+#         print(f"{x} {rooms[x]['title']} - {rooms[x]['items']}")
+# print(count)
