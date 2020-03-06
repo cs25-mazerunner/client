@@ -160,7 +160,7 @@ class CPU:
         print(self.registers[a])
         # self.save+=f"{self.registers[a]}N"
     def pra(self, a=None, b=None):
-        print(chr(self.registers[a]))
+        # print(chr(self.registers[a]))
         self.save+=f"{chr(self.registers[a])}"
     def add(self, a=None, b=None):
         self.alu("ADD", a, b)

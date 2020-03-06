@@ -111,7 +111,7 @@ def refine(path):
                         new_path[-1]=f'd {curr_dir} 2 [{curr_rm}-{nxt_rm}]'
                 else:
                     new_path.append(curr_dir)
-                print(x,new_path)
+                # print(x,new_path)
                 last_dir=curr_dir
                 curr_rm=nxt_rm
             else:
@@ -127,6 +127,28 @@ def refine(path):
     else:
         new_path=list(path)
     return new_path
+
+def weight_roomz(roomz):
+    best=(float('inf'),0) # (Total,Index)
+    all=[]
+    for path in range(len(roomz)):
+        total=0
+        for item in roomz[path]:
+            # print("RMZ",item)
+            if item in ['warp','r']:
+                total+=7
+            elif item in ["n", "s", "e", "w"]:
+                total+=3.15
+            elif item[0]=='d':
+                jumps=int(item[4])
+                total+=7+(jumps*.5)
+            else:
+                print("PROBLEM")
+        all.append((total,path))
+        if total<best[0]:
+            best=(total,path)
+    # print("ALL",roomz,all)
+    return roomz[best[1]]
 
 def find_direction():
     found=[]
@@ -151,6 +173,7 @@ def find_direction():
 
 
 def find_room(target):
+    roomz=[]
     found=set()
     q=Queue()    
     # print("PROBLEM",r,curr_room)
@@ -177,24 +200,25 @@ def find_room(target):
                 new_path=list(rm[1])
                 new_path.append(d[0])
                 if 'dash' in player['abilities']:
-                    print("PRE REFINE",new_path)
+                    # print("PRE REFINE",new_path)
                     new_path=refine(new_path)
                 # print(new_path)
                 # sys.exit()
-                return new_path
+                roomz.append(new_path)
+                # return new_path
             elif d[1] not in ['x','?'] and d[1] not in found:
                 # print(rm)
                 if  len(rm[1])>0 and rm[1][-1] not in ['warp','r'] and d[0]!=reverse_dirs[rm[1][-1]]:
                     new_path=list(rm[1])
                     new_path.append(d[0])
-                    # print("ADDING",world_map[d[1]],new_path)
-                    q.enqueue((world_map[d[1]],new_path,rm[2]))
+                    # print("ADDING",world_map[d[1]],new_path)  
+                    q.enqueue((world_map[d[1]],new_path,d[1]))
                     found.add(d[1])
                 else:
                     new_path=list(rm[1])
                     new_path.append(d[0])
                     # print("ADDING",world_map[d[1]],new_path)
-                    q.enqueue((world_map[d[1]],new_path,rm[2]))
+                    q.enqueue((world_map[d[1]],new_path,d[1]))
                     found.add(d[1])
         if len(rm[1])>0 and rm[1][-1]!='warp':
             warp_path=list(rm[1])
@@ -207,6 +231,12 @@ def find_room(target):
                 warp_room=rm[2]-500
                 q.enqueue((world_map[warp_room],warp_path,warp_room))
                 found.add(warp_room)
+    # print("ROOMZ",roomz)
+    #weighting
+    test=weight_roomz(roomz)
+    fastest=roomz[0]
+    return fastest
+        
 
 
 def valid_proof(last_proof, proof):
@@ -258,6 +288,7 @@ curr_room=r['room_id']
 curr_coordinates=r['coordinates']
 exits=r['exits']
 cooldown=r['cooldown']
+items=r['items']
 print("ROOM",curr_room,curr_coordinates,"EXIT",exits,"COOL",cooldown)
 print("TITLE",r['title'],"\nDESC",r['description'],"\nItems:",r['items'],"\nERR:",r['errors'],"\nMSG:",r['messages'],'\n\n')
 time.sleep(cooldown - ((time.time() - starttime) % cooldown))
@@ -274,14 +305,15 @@ print(player)
 
 #Start walk loop
 cmds=[]
+
 while True:
-    if current_action!=None:
-        time.sleep(cooldown - ((time.time() - starttime) % cooldown)) 
+    factor=1
     # Action IMPUT
     if current_action not in ['auto_get','auto_sell','auto_confirm','auto_walk','auto_status','auto_mine']:
-        # if player['encumbrance']>player['strength']*.69:
-        #     cmds=find_room(1)
-        #     print(f"NEW PATH to 1",cmds)
+        if player['encumbrance']>player['strength']*.69:
+            cmds=find_room(1)
+            cmds.extend(['f 55','ex well'])
+            # print(f"NEW PATH to 1",cmds)
         if len(cmds)==0:
             cmds = input("-> ").lower().split(",")
         curr_cmd = cmds.pop(0).split(" ")
@@ -291,10 +323,6 @@ while True:
         elif curr_cmd[0] in ["fn", "fs", "fe", "fw"]:
             current_action='fly/'
             current_data={"direction":curr_cmd[0][1]}
-        elif curr_cmd[0] == "z":
-            paff=['w','w','s','e','e']
-            paff=refine(paff)
-            print(paff)
         elif curr_cmd[0] == "d":
             # d n 3 [1-2-3]
             #{"direction":"n", "num_rooms":"5", "next_room_ids":"10,19,20,63,72"}
@@ -313,7 +341,7 @@ while True:
             break
         elif curr_cmd[0] == "g":
             current_action='take/'
-            current_data={"name":r['items'][0]}
+            current_data={"name":items[0]}
         elif curr_cmd[0] == "x":
             current_action='init/'
             current_data={}
@@ -390,7 +418,11 @@ while True:
             current_action=None
     elif current_action=='auto_get':
         current_action='take/'
-        current_data={"name":r['items'][0]}
+        if 'golden snitch' in items:
+            current_data={"name":"golden snitch"}
+        else:
+            current_data={"name":items[0]}
+
     elif current_action=='auto_sell':
         current_action='sell/'
         current_data={"name":player['inventory'][0]}
@@ -427,16 +459,19 @@ while True:
         if current_action!='dash/':
             current_action='fly/'
         # Move 
+        # print("COOL",cooldown,time.time(),starttime)
+        cooldown*=factor
+        time.sleep(cooldown - ((time.time() - starttime) % cooldown)) 
         try:
-            print("TRYING",current_action,current_data)
+            # print("TRYING",current_action,current_data)
             response=requests.post(SERVER+current_action, headers=SET_HEADERS, json=current_data)
             response.raise_for_status()
         except HTTPError as http_err:
             print(f'HTTP error occurred: {http_err}')
         except Exception as err:
             print(f'Other error occurred: {err}')
-
         starttime=time.time()
+        # print("MOVE R",r)
         last_room=curr_room
         last_action=current_action
         last_data=current_data
@@ -457,15 +492,16 @@ while True:
         #Get items automatically if they are in the room.
         # if player['gold']<1000:
             if len(items)>0:
-                print("GET IT!")
-                if 'golden snitch' in items:
+                if 'golden snitch' in items or curr_room<500:
+                    print("GET IT!")
                     current_action ='auto_get'
-                    cmds.insert(0,'i')
+                # cmds=['g','x']
         if curr_room==1 and len(player['inventory'])>0:
             current_action='auto_sell'
     elif current_action=='take/':
+        time.sleep(cooldown - ((time.time() - starttime) % cooldown)) 
         try:
-            # print("TRYING",current_action,current_data)
+            print("TRYING",current_action,current_data)
             response=requests.post(SERVER+current_action, headers=SET_HEADERS, json=current_data)
             response.raise_for_status()
         except HTTPError as http_err:
@@ -474,16 +510,19 @@ while True:
             print(f'Other error occurred: {err}')
         starttime=time.time()
         r=response.json()
+        print("TAKE R",r)
         cooldown=r['cooldown']
         player['inventory'].append(current_data['name'])
+        items.pop(0)
         print("Items:",r['items'],"\nMSG:",r['messages'])
-        if player['gold']<1000:
-            if len(items)>0:
-                print("GET IT!")
-                current_action ='auto_get'
-            else:
-                cmds.insert(0,'i')
+        # if player['gold']<1000:
+        if len(r['items'])>0 and curr_room<500:
+            print("TAKE IT!")
+            current_action ='auto_get'
+        else:
+            cmds.insert(0,'i')
     elif current_action=='status/':
+        time.sleep(cooldown - ((time.time() - starttime) % cooldown)) 
         try:
             # print("TRYING",current_action,current_data)
             response=requests.post(SERVER+current_action, headers=SET_HEADERS, json=current_data)
@@ -523,8 +562,9 @@ while True:
         ,r['abilities']
         )                  
     elif current_action=='sell/':
+        time.sleep(cooldown - ((time.time() - starttime) % cooldown)) 
         try:
-            print("TRYING",current_action,current_data)
+            # print("TRYING",current_action,current_data)
             response=requests.post(SERVER+current_action, headers=SET_HEADERS, json=current_data)
             response.raise_for_status()
         except HTTPError as http_err:
@@ -545,8 +585,9 @@ while True:
             else:
                 current_action='auto_status'
     elif current_action=='pray/':
+        time.sleep(cooldown - ((time.time() - starttime) % cooldown)) 
         try:
-            print("TRYING",current_action,current_data)
+            # print("TRYING",current_action,current_data)
             response=requests.post(SERVER+current_action, headers=SET_HEADERS, json=current_data)
             response.raise_for_status()
         except HTTPError as http_err:
@@ -558,8 +599,10 @@ while True:
         cooldown=r['cooldown']
         print(r['messages'],'\n',r['errors'])
     elif current_action=='warp/':
+        cooldown*=factor
+        time.sleep(cooldown - ((time.time() - starttime) % cooldown)) 
         try:
-            print("TRYING",current_action,current_data)
+            # print("TRYING",current_action,current_data)
             response=requests.post(SERVER+current_action, headers=SET_HEADERS, json=current_data)
             response.raise_for_status()
         except HTTPError as http_err:
@@ -568,11 +611,18 @@ while True:
             print(f'Other error occurred: {err}')
         starttime=time.time()
         r=response.json()
+        # print("WARP",r)
+        curr_room=r['room_id']
+        curr_coordinates=r['coordinates']
+        exits=r['exits']
         cooldown=r['cooldown']
-        print(r['messages'],'\n',r['errors'])
+        items=r['items']
+        players=r['players']
+        print("Cooldown",cooldown,"Players",players,r['messages'],'\n',r['errors'])
     elif current_action=='wear/':
+        time.sleep(cooldown - ((time.time() - starttime) % cooldown)) 
         try:
-            print("TRYING",current_action,current_data)
+            # print("TRYING",current_action,current_data)
             response=requests.post(SERVER+current_action, headers=SET_HEADERS, json=current_data)
             response.raise_for_status()
         except HTTPError as http_err:
@@ -584,8 +634,9 @@ while True:
         cooldown=r['cooldown']
         print(r['messages'],'\n',r['errors'])
     elif current_action=='undress/':
+        time.sleep(cooldown - ((time.time() - starttime) % cooldown)) 
         try:
-            print("TRYING",current_action,current_data)
+            # print("TRYING",current_action,current_data)
             response=requests.post(SERVER+current_action, headers=SET_HEADERS, json=current_data)
             response.raise_for_status()
         except HTTPError as http_err:
@@ -598,7 +649,7 @@ while True:
         print(r['messages'],'\n',r['errors'])
     elif current_action=='carry/':
         try:
-            print("TRYING",current_action,current_data)
+            # print("TRYING",current_action,current_data)
             response=requests.post(SERVER+current_action, headers=SET_HEADERS, json=current_data)
             response.raise_for_status()
         except HTTPError as http_err:
@@ -610,8 +661,9 @@ while True:
         cooldown=r['cooldown']
         print(r['messages'],'\n',r['errors'])
     elif current_action=='receive/':
+        time.sleep(cooldown - ((time.time() - starttime) % cooldown)) 
         try:
-            print("TRYING",current_action,current_data)
+            # print("TRYING",current_action,current_data)
             response=requests.post(SERVER+current_action, headers=SET_HEADERS, json=current_data)
             response.raise_for_status()
         except HTTPError as http_err:
@@ -636,8 +688,10 @@ while True:
         cooldown=r['cooldown']
         print(r['messages'],'\n',r['errors'])
     elif current_action=='recall/':
+        cooldown*=factor
+        time.sleep(cooldown - ((time.time() - starttime) % cooldown)) 
         try:
-            print("TRYING",current_action,current_data)
+            # print("TRYING",current_action,current_data)
             response=requests.post(SERVER+current_action, headers=SET_HEADERS, json=current_data)
             response.raise_for_status()
         except HTTPError as http_err:
@@ -652,10 +706,10 @@ while True:
         cooldown=r['cooldown']
         items=r['items']
         players=r['players']
-        print(r['messages'],'\n',r['errors'])
+        print("Cooldown",r['cooldown'],r['messages'],'\n',r['errors'])
     elif current_action=='change_name/':
         try:
-            print("TRYING",current_action,current_data)
+            # print("TRYING",current_action,current_data)
             response=requests.post(SERVER+current_action, headers=SET_HEADERS, json=current_data)
             response.raise_for_status()
         except HTTPError as http_err:
@@ -669,7 +723,7 @@ while True:
         time.sleep(cooldown - ((time.time() - starttime) % cooldown))
         current_data["confirm"]="aye"
         try:
-            print("TRYING",current_action,current_data)
+            # print("TRYING",current_action,current_data)
             response=requests.post(SERVER+current_action, headers=SET_HEADERS, json=current_data)
             response.raise_for_status()
         except HTTPError as http_err:
@@ -678,8 +732,9 @@ while True:
             print(f'Other error occurred: {err}')
     elif current_action=='examine/':
         # make a network req
+        time.sleep(cooldown - ((time.time() - starttime) % cooldown))
         try:
-            print("Trying to examine...", current_action, current_data)
+            # print("Trying to examine...", current_action, current_data)
             response=requests.post(SERVER+current_action, headers=SET_HEADERS, json=current_data)
             response.raise_for_status()
         except HTTPError as http_err:
@@ -697,15 +752,23 @@ while True:
 
         # with open('well_message.txt', 'w') as f:
         #     f.write(r["description"])
-        cpu = CPU()
-        cpu.load(r["description"])
-        save=cpu.run()
-        cpu = None
-        print("SAVE",save)
-        cmds.extend([f'f {save}','f 555','ex well'])
+        if current_data['name']=="well":
+            cpu = CPU()
+            cpu.load(r["description"])
+            save=cpu.run()
+            cpu = None
+            # print("SAVE",save)
+            if int(save)<500:
+                cmds.extend([f'f {save}','pr','m'])
+            else:
+                cmds.extend([f'f {save}','f 555','ex well'])
+        else:
+            print(r['description'])
+            
     elif current_action=="get_proof/":
         # real_proof=0
         # while True:
+            time.sleep(cooldown - ((time.time() - starttime) % cooldown)) 
             try:
                 response=requests.get('https://lambda-treasure-hunt.herokuapp.com/api/bc/last_proof/', headers=SET_HEADERS, json=current_data )
                 response.raise_for_status()
@@ -735,6 +798,7 @@ while True:
         # current_action='auto_mine'
         
     elif current_action=='mine/':
+        time.sleep(cooldown - ((time.time() - starttime) % cooldown)) 
         try:
             print("Mining...", current_action, current_data)
             response=requests.post('https://lambda-treasure-hunt.herokuapp.com/api/bc/mine/', headers=SET_HEADERS, json=current_data)
@@ -751,10 +815,16 @@ while True:
         # grab the wait time
         cooldown = r['cooldown']
         # print(r["messages"], '\n', r['errors'])
+        fail=r.get('errors',None)
+        if not fail:
+            cmds.extend(['f 55','ex well'])
+        else:
+            cmds.extend(['pr','m'])
     elif current_action=='get_balance/':
         # make a network req
+        time.sleep(cooldown - ((time.time() - starttime) % cooldown))
         try:
-            print("Trying", current_action, current_data)
+            # print("Trying", current_action, current_data)
             response=requests.get('https://lambda-treasure-hunt.herokuapp.com/api/bc/get_balance/', headers=SET_HEADERS, json=current_data)
             response.raise_for_status()
         except HTTPError as http_err:
@@ -766,6 +836,7 @@ while True:
         cooldown = r['cooldown']
         print(r)
     elif current_action=='init/':
+        time.sleep(cooldown - ((time.time() - starttime) % cooldown)) 
         try:
             response =requests.get(SERVER+'init/', headers=SET_HEADERS )
             response.raise_for_status()
@@ -782,8 +853,10 @@ while True:
         curr_coordinates=r['coordinates']
         exits=r['exits']
         cooldown=r['cooldown']
+        items=r['items']
+        players=r['players']
         print("ROOM",curr_room,curr_coordinates,"EXIT",exits,"COOL",cooldown)
-        print("TITLE",r['title'],"\nDESC",r['description'],"\nItems:",r['items'],"\nERR:",r['errors'],"\nMSG:",r['messages'],'\n\n')        
+        print("TITLE",r['title'],"\nDESC",r['description'],"\nItems:",r['items'],"\nERR:",players,"\nERR:",r['errors'],"\nMSG:",r['messages'],'\n\n')        
     elif current_action=='stay/':
         pass
     else:
