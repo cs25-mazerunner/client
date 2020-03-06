@@ -129,7 +129,28 @@ def refine(path):
     return new_path
 
 def weight_roomz(roomz):
-    pass
+    best=(float('inf'),0) # (Total,Index)
+    all=[]
+    for path in range(len(roomz)):
+        total=0
+        for item in roomz[path]:
+            # print("RMZ",item)
+            if item in ['warp','r']:
+                total+=7
+            elif item in ["n", "s", "e", "w"]:
+                total+=3.15
+            elif item[0]=='d':
+                if item[5]==2:
+                    total+=6.3
+                else:
+                    total+=8.5
+            else:
+                print("PROBLEM")
+        all.append((total,path))
+        if total<best[0]:
+            best=(total,path)
+    print("ALL",roomz,all)
+    return roomz[best[1]]
 
 def find_direction():
     found=[]
@@ -212,10 +233,10 @@ def find_room(target):
                 warp_room=rm[2]-500
                 q.enqueue((world_map[warp_room],warp_path,warp_room))
                 found.add(warp_room)
-    print("ROOMZ",roomz)
+    # print("ROOMZ",roomz)
     #weighting
+    test=weight_roomz(roomz)
     fastest=roomz[0]
-    # fastest=weight_roomz(roomz)
     return fastest
         
 
@@ -291,9 +312,10 @@ while True:
     factor=1
     # Action IMPUT
     if current_action not in ['auto_get','auto_sell','auto_confirm','auto_walk','auto_status','auto_mine']:
-        # if player['encumbrance']>player['strength']*.69:
-        #     cmds=find_room(1)
-        #     print(f"NEW PATH to 1",cmds)
+        if player['encumbrance']>player['strength']*.69:
+            cmds=find_room(1)
+            cmds.extend(['f 555','ex well'])
+            # print(f"NEW PATH to 1",cmds)
         if len(cmds)==0:
             cmds = input("-> ").lower().split(",")
         curr_cmd = cmds.pop(0).split(" ")
