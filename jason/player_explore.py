@@ -140,16 +140,14 @@ def weight_roomz(roomz):
             elif item in ["n", "s", "e", "w"]:
                 total+=3.15
             elif item[0]=='d':
-                if item[5]==2:
-                    total+=6.3
-                else:
-                    total+=8.5
+                jumps=int(item[4])
+                total+=7+(jumps*.5)
             else:
                 print("PROBLEM")
         all.append((total,path))
         if total<best[0]:
             best=(total,path)
-    print("ALL",roomz,all)
+    # print("ALL",roomz,all)
     return roomz[best[1]]
 
 def find_direction():
@@ -314,7 +312,7 @@ while True:
     if current_action not in ['auto_get','auto_sell','auto_confirm','auto_walk','auto_status','auto_mine']:
         if player['encumbrance']>player['strength']*.69:
             cmds=find_room(1)
-            cmds.extend(['f 555','ex well'])
+            cmds.extend(['f 55','ex well'])
             # print(f"NEW PATH to 1",cmds)
         if len(cmds)==0:
             cmds = input("-> ").lower().split(",")
@@ -761,7 +759,7 @@ while True:
             cpu = None
             # print("SAVE",save)
             if int(save)<500:
-                cmds.extend([f'f {save}','pr','m','f 55','ex well'])
+                cmds.extend([f'f {save}','pr','m'])
             else:
                 cmds.extend([f'f {save}','f 555','ex well'])
         else:
@@ -817,6 +815,11 @@ while True:
         # grab the wait time
         cooldown = r['cooldown']
         # print(r["messages"], '\n', r['errors'])
+        fail=r.get('errors',None)
+        if not fail:
+            cmds.extend(['f 55','ex well'])
+        else:
+            cmds.extend(['pr','m'])
     elif current_action=='get_balance/':
         # make a network req
         time.sleep(cooldown - ((time.time() - starttime) % cooldown))
