@@ -305,14 +305,19 @@ print(player)
 
 #Start walk loop
 cmds=[]
-
+donut_timer=0
 while True:
+    donut_timer+=cooldown
+    print("DONUTS!",donut_timer)
+    if donut_timer>350:
+        donut_timer=0
+        cmds=['f 2,buy donut,f 555,ex well']
     factor=1
     # Action IMPUT
     if current_action not in ['auto_get','auto_sell','auto_confirm','auto_walk','auto_status','auto_mine']:
         if player['encumbrance']>player['strength']*.69:
             cmds=find_room(1)
-            cmds.extend(['f 55','ex well'])
+            cmds.extend(['f 555','ex well'])
             # print(f"NEW PATH to 1",cmds)
         if len(cmds)==0:
             cmds = input("-> ").lower().split(",")
@@ -351,8 +356,6 @@ while True:
         elif curr_cmd[0] == "o":
             current_action='sell/'
             current_data={"name":player['inventory'][0]}
-            if curr_cmd[0]=="y":
-                current_data['confirm']='yes'
         elif curr_cmd[0] == "a":
             print("AUTOWALK")
             current_action='move/'
@@ -395,6 +398,9 @@ while True:
         elif curr_cmd[0] == "b":
             current_action='get_balance/'
             current_data={}
+        elif curr_cmd[0] == "buy":
+            current_action='buy/'
+            current_data={"name":curr_cmd[1]}
         elif curr_cmd[0] == "+":
             current_action='carry/'
             current_data={"name":player['inventory'][int(curr_cmd[1])]}      
@@ -427,8 +433,12 @@ while True:
         current_action='sell/'
         current_data={"name":player['inventory'][0]}
     elif current_action=='auto_confirm':
-        current_action='sell/'
-        current_data={"name":player['inventory'][0],"confirm":"yes"}
+        if current_data.get('name',None)=='donut':
+            current_action='buy/'
+            current_data["confirm"]="yes"
+        else:
+            current_action='sell/'
+            current_data={"name":player['inventory'][0],"confirm":"yes"}    
     elif current_action=='auto_status':
         current_action='status/'
         current_data={}
@@ -535,7 +545,7 @@ while True:
         r=response.json()
         cooldown=r['cooldown']
         player=dict(r)
-        # print(f"***{player}***")
+        print(f"***{player}***")
         print("Name:"
         ,r['name']
         ,"\nEncumbrance:"
@@ -584,6 +594,22 @@ while True:
                 current_action='auto_sell'
             else:
                 current_action='auto_status'
+    elif current_action=='buy/':
+        time.sleep(cooldown - ((time.time() - starttime) % cooldown)) 
+        try:
+            # print("TRYING",current_action,current_data)
+            response=requests.post(SERVER+current_action, headers=SET_HEADERS, json=current_data)
+            response.raise_for_status()
+        except HTTPError as http_err:
+            print(f'HTTP error occurred: {http_err}')
+        except Exception as err:
+            print(f'Other error occurred: {err}')
+        starttime=time.time()
+        r=response.json()
+        cooldown=r['cooldown']
+        print(r['messages'])
+        if current_data.get('confirm',None)==None:
+            current_action='auto_confirm'
     elif current_action=='pray/':
         time.sleep(cooldown - ((time.time() - starttime) % cooldown)) 
         try:
